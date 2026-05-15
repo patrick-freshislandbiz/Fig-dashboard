@@ -1,3 +1,5 @@
+/* global process */
+
 import { getStore } from '@netlify/blobs'
 
 const STORE_NAME = 'fig-slack-records'
@@ -8,7 +10,7 @@ export async function handler(event) {
   }
 
   try {
-    const store = getStore(STORE_NAME)
+    const store = getBlobStore()
     const listed = await store.list()
     const records = await Promise.all(
       listed.blobs.map(async (blob) => store.get(blob.key, { type: 'json' })),
@@ -23,6 +25,17 @@ export async function handler(event) {
   } catch (error) {
     return json(500, { error: error.message || 'Unable to load Slack records.' })
   }
+}
+
+function getBlobStore() {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID
+  const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN
+
+  if (siteID && token) {
+    return getStore(STORE_NAME, { siteID, token })
+  }
+
+  return getStore(STORE_NAME)
 }
 
 function json(statusCode, body) {

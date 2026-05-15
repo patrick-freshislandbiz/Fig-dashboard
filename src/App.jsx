@@ -965,7 +965,7 @@ function MessagesView({ messages, setMessages, tasks, setTasks, config, setConfi
   }
   const syncSlackRecords = async () => {
     try {
-      const response = await fetch('/.netlify/functions/slack-records')
+      const response = await fetch('/.netlify/functions/slack-command')
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
         throw new Error(result.error || 'Unable to sync Slack records.')

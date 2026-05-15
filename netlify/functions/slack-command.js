@@ -4,8 +4,14 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getStore } from '@netlify/blobs'
 
 const STORE_NAME = 'fig-slack-records'
+globalThis.figSlackRecords = globalThis.figSlackRecords || []
 
 export async function handler(event) {
+  if (event.httpMethod === 'GET') {
+    const records = await readRecords()
+    return json(200, { records })
+  }
+
   if (event.httpMethod !== 'POST') {
     return json(405, { error: 'Method not allowed' })
   }
@@ -33,13 +39,52 @@ export async function handler(event) {
     actionCreated: parsed.actionCreated,
   }
 
-  const store = getStore(STORE_NAME)
-  await store.setJSON(record.id, record)
+  await saveRecord(record)
 
   return json(200, {
     response_type: 'ephemeral',
     text: parsed.reply,
   })
+}
+
+async function saveRecord(record) {
+  globalThis.figSlackRecords = [record, ...globalThis.figSlackRecords].slice(0, 100)
+
+  try {
+    const store = getBlobStore()
+    await store.setJSON(record.id, record)
+  } catch (error) {
+    console.warn('Netlify Blobs unavailable; using warm function memory only.', error.message)
+  }
+}
+
+async function readRecords() {
+  try {
+    const store = getBlobStore()
+    const listed = await store.list()
+    const records = await Promise.all(
+      listed.blobs.map(async (blob) => store.get(blob.key, { type: 'json' })),
+    )
+
+    return records
+      .filter(Boolean)
+      .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
+      .slice(0, 100)
+  } catch (error) {
+    console.warn('Netlify Blobs unavailable; reading warm function memory only.', error.message)
+    return globalThis.figSlackRecords || []
+  }
+}
+
+function getBlobStore() {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID
+  const token = process.env.NETLIFY_BLOBS_TOKEN || process.env.NETLIFY_AUTH_TOKEN
+
+  if (siteID && token) {
+    return getStore(STORE_NAME, { siteID, token })
+  }
+
+  return getStore(STORE_NAME)
 }
 
 function parseFigCommand(input) {
