@@ -946,7 +946,7 @@ function DocumentsView({ documents, setDocuments, query, showToast }) {
 }
 
 function MessagesView({ messages, setMessages, tasks, setTasks, config, setConfig, metrics, showToast }) {
-  const [draft, setDraft] = useState('/task Confirm signed copies for May work orders')
+  const [draft, setDraft] = useState('/fig task Confirm signed copies for May work orders')
   const sendDemo = () => {
     const message = {
       id: `m${Date.now()}`,
@@ -957,15 +957,63 @@ function MessagesView({ messages, setMessages, tasks, setTasks, config, setConfi
       processed: true,
     }
     setMessages([message, ...messages])
-    if (draft.startsWith('/task')) {
-      setTasks([{ id: `t${Date.now()}`, title: draft.replace('/task', '').trim(), description: 'Created from message feed.', priority: 'medium', status: 'todo', dueDate: format(addDays(today, 3), 'yyyy-MM-dd'), assignedTo: 'Patrick King' }, ...tasks])
+    const taskText = draft.replace('/fig', '').trim()
+    if (taskText.startsWith('task')) {
+      setTasks([{ id: `t${Date.now()}`, title: taskText.replace('task', '').trim(), description: 'Created from message feed.', priority: 'medium', status: 'todo', dueDate: format(addDays(today, 3), 'yyyy-MM-dd'), assignedTo: 'Patrick King' }, ...tasks])
     }
     showToast('Message processed.')
+  }
+  const syncSlackRecords = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/slack-records')
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(result.error || 'Unable to sync Slack records.')
+      }
+      const inbound = (result.records || []).map((record) => ({
+        id: record.id,
+        source: record.source || 'Slack',
+        sender: record.sender || 'Slack user',
+        text: record.text,
+        timestamp: record.timestamp ? format(parseISO(record.timestamp), 'yyyy-MM-dd HH:mm') : format(today, 'yyyy-MM-dd HH:mm'),
+        processed: Boolean(record.processed),
+        command: record.command,
+        payload: record.payload,
+      }))
+      const existingIds = new Set(messages.map((message) => message.id))
+      const fresh = inbound.filter((record) => !existingIds.has(record.id))
+      setMessages([...fresh, ...messages])
+      const newTasks = fresh
+        .filter((record) => record.command === 'task' && record.payload)
+        .map((record) => ({
+          id: `task-${record.id}`,
+          title: record.payload,
+          description: `Created from Slack by ${record.sender}.`,
+          priority: 'medium',
+          status: 'todo',
+          dueDate: format(addDays(today, 3), 'yyyy-MM-dd'),
+          assignedTo: 'Patrick King',
+        }))
+      if (newTasks.length) {
+        setTasks([...newTasks, ...tasks])
+      }
+      showToast(fresh.length ? `Synced ${fresh.length} Slack record(s).` : 'No new Slack records.')
+    } catch (error) {
+      showToast(error.message || 'Slack sync failed.')
+    }
   }
   return (
     <div className="messages-layout">
       <div className="stack">
-        <Card title="Slack Message Feed" action={<button className={config.slackConnected ? 'success' : 'primary'} onClick={() => setConfig({ ...config, slackConnected: !config.slackConnected })}>{config.slackConnected ? 'Connected' : 'Connect Demo'}</button>}>
+        <Card
+          title="Slack Message Feed"
+          action={
+            <div className="action-row">
+              <button onClick={syncSlackRecords}>Sync Slack</button>
+              <button className={config.slackConnected ? 'success' : 'primary'} onClick={() => setConfig({ ...config, slackConnected: !config.slackConnected })}>{config.slackConnected ? 'Connected' : 'Connect Demo'}</button>
+            </div>
+          }
+        >
           <div className="compose-row">
             <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendDemo()} />
             <button onClick={sendDemo}>Send</button>
@@ -984,10 +1032,10 @@ function MessagesView({ messages, setMessages, tasks, setTasks, config, setConfi
       </div>
       <aside className="side-stack">
         <Card title="Slack Commands">
-          <Command code="/task <description>" text="Creates a task" />
-          <Command code="/wo <date> <staff1> <staff2>" text="Creates a work order" />
-          <Command code="/note <text>" text="Saves an operational note" />
-          <Command code="/status" text={`Replies with ${metrics.overdueTasks} overdue tasks and ${metrics.pendingSignoffs} pending sign-offs`} />
+          <Command code="/fig task <description>" text="Creates a task" />
+          <Command code="/fig wo <date> <staff1> <staff2>" text="Captures a work order update" />
+          <Command code="/fig note <text>" text="Saves an operational note" />
+          <Command code="/fig status" text={`Replies with ${metrics.overdueTasks} overdue tasks and ${metrics.pendingSignoffs} pending sign-offs`} />
         </Card>
         <Card title="Google + Slack Flow">
           <Command code="Slack channel" text="Staff send updates, notes, and work order details." />

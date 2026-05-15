@@ -708,6 +708,9 @@ The app should:
 - Store Slack webhook URL and channel ID locally
 - Send outbound Slack alerts through a serverless function
 - Prefer `SLACK_WEBHOOK_URL` as a Netlify environment variable for deployed use
+- Receive `/fig` slash commands through `/.netlify/functions/slack-command`
+- Store inbound Slack records in Netlify Blobs
+- Let the dashboard Messages view sync inbound Slack records
 - Support command-style message capture in demo mode
 - Prepare for Slack Events API or connector-based live reads
 - Parse supported commands

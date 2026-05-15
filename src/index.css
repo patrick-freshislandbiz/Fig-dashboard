@@ -453,6 +453,13 @@ button {
   margin-bottom: 14px;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .card-head button,
 .segmented button,
 .filter-tabs button,

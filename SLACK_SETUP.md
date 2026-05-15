@@ -47,4 +47,59 @@ Do not commit your Slack webhook URL to source control.
 
 ## 4. Receiving Slack Messages
 
-Receiving messages from Slack requires a public request URL for Slack Events API or slash commands. That is the next phase after outbound alerts. The receiving function should verify Slack requests, parse commands like `/task` and `/note`, then write records into Google Sheets.
+Receiving is now supported through a Slack slash command.
+
+### Create the `/fig` slash command
+
+1. Go to https://api.slack.com/apps
+2. Open your `FIG Operations Dashboard` app
+3. Open **Slash Commands**
+4. Click **Create New Command**
+5. Set the command:
+
+```text
+/fig
+```
+
+6. Set the request URL:
+
+```text
+https://YOUR-NETLIFY-SITE.netlify.app/.netlify/functions/slack-command
+```
+
+7. Add a short description:
+
+```text
+Send FIG dashboard updates
+```
+
+8. Add usage hint:
+
+```text
+task Buy supplies | note Restroom supplies low | wo 2026-05-18 Marcus Keisha | status
+```
+
+9. Save the command and reinstall the app to your workspace if Slack asks.
+
+### Add the signing secret
+
+In your Slack app, go to **Basic Information** and copy **Signing Secret**.
+
+In Netlify, add this environment variable:
+
+```text
+SLACK_SIGNING_SECRET=<your Slack signing secret>
+```
+
+Redeploy the site after adding it.
+
+### Use it in Slack
+
+```text
+/fig task Buy restroom supplies
+/fig note Restroom supplies running low after Wednesday visit
+/fig wo 2026-05-18 Marcus Keisha
+/fig status
+```
+
+Then open the dashboard **Messages** view and click **Sync Slack**.
