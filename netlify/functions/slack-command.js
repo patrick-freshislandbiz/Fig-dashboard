@@ -49,32 +49,42 @@ export async function handler(event) {
     actionCreated: parsed.actionCreated,
   }
 
-  await saveRecord(record)
+  const saveResult = await saveRecord(record)
 
   return json(200, {
     response_type: 'ephemeral',
-    text: parsed.reply,
+    text: saveResult.ok ? parsed.reply : `${parsed.reply}\nDatabase warning: ${saveResult.error}`,
   })
 }
 
 async function saveRecord(record) {
   globalThis.figSlackRecords = [record, ...globalThis.figSlackRecords].slice(0, 100)
 
-  if (isAppsScriptConfigured()) {
-    await appendSlackRecordToAppsScript(record)
-    return
-  }
-
-  if (isGoogleSheetsConfigured()) {
-    await appendSlackRecordToSheets(record)
-    return
-  }
-
   try {
-    const store = getBlobStore()
-    await store.setJSON(record.id, record)
+    if (isAppsScriptConfigured()) {
+      await appendSlackRecordToAppsScript(record)
+      return { ok: true }
+    }
+
+    if (isGoogleSheetsConfigured()) {
+      await appendSlackRecordToSheets(record)
+      return { ok: true }
+    }
+
+    try {
+      const store = getBlobStore()
+      await store.setJSON(record.id, record)
+      return { ok: true }
+    } catch (error) {
+      console.warn('Netlify Blobs unavailable; using warm function memory only.', error.message)
+      return { ok: true }
+    }
   } catch (error) {
-    console.warn('Netlify Blobs unavailable; using warm function memory only.', error.message)
+    console.error('Slack record database save failed.', error)
+    return {
+      ok: false,
+      error: error.message || 'Unable to save record. Check GOOGLE_APPS_SCRIPT_URL and Apps Script deployment.',
+    }
   }
 }
 
