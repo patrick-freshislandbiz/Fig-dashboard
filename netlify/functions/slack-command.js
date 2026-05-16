@@ -17,44 +17,54 @@ const STORE_NAME = 'fig-slack-records'
 globalThis.figSlackRecords = globalThis.figSlackRecords || []
 
 export async function handler(event) {
-  if (event.httpMethod === 'GET') {
-    const records = await readRecords()
-    return json(200, { records })
+  try {
+    if (event.httpMethod === 'GET') {
+      const records = await readRecords()
+      return json(200, {
+        ok: true,
+        configured: {
+          appsScript: isAppsScriptConfigured(),
+          serviceAccountSheets: isGoogleSheetsConfigured(),
+          slackSigningSecret: Boolean(process.env.SLACK_SIGNING_SECRET),
+        },
+        records,
+      })
+    }
+
+    if (event.httpMethod !== 'POST') {
+      return json(405, { error: 'Method not allowed' })
+    }
+
+    const verification = verifySlackRequest(event)
+    if (!verification.ok) {
+      return slackText(`FIG command reached Netlify, but Slack verification failed: ${verification.error}`)
+    }
+
+    const params = new URLSearchParams(event.body || '')
+    const rawText = String(params.get('text') || '').trim()
+    const userName = params.get('user_name') || params.get('user_id') || 'Slack user'
+    const channelName = params.get('channel_name') || params.get('channel_id') || 'Slack'
+    const parsed = parseFigCommand(rawText)
+    const record = {
+      id: `slack-${Date.now()}`,
+      source: 'Slack',
+      sender: userName,
+      channel: channelName,
+      text: rawText || '/fig status',
+      command: parsed.command,
+      payload: parsed.payload,
+      timestamp: new Date().toISOString(),
+      processed: parsed.valid,
+      actionCreated: parsed.actionCreated,
+    }
+
+    const saveResult = await saveRecord(record)
+
+    return slackText(saveResult.ok ? parsed.reply : `${parsed.reply}\nDatabase warning: ${saveResult.error}`)
+  } catch (error) {
+    console.error('Unhandled Slack command error.', error)
+    return slackText(`FIG command reached Netlify, but the function crashed: ${error.message || 'Unknown error'}`)
   }
-
-  if (event.httpMethod !== 'POST') {
-    return json(405, { error: 'Method not allowed' })
-  }
-
-  const verification = verifySlackRequest(event)
-  if (!verification.ok) {
-    return json(verification.status, { error: verification.error })
-  }
-
-  const params = new URLSearchParams(event.body || '')
-  const rawText = String(params.get('text') || '').trim()
-  const userName = params.get('user_name') || params.get('user_id') || 'Slack user'
-  const channelName = params.get('channel_name') || params.get('channel_id') || 'Slack'
-  const parsed = parseFigCommand(rawText)
-  const record = {
-    id: `slack-${Date.now()}`,
-    source: 'Slack',
-    sender: userName,
-    channel: channelName,
-    text: rawText || '/fig status',
-    command: parsed.command,
-    payload: parsed.payload,
-    timestamp: new Date().toISOString(),
-    processed: parsed.valid,
-    actionCreated: parsed.actionCreated,
-  }
-
-  const saveResult = await saveRecord(record)
-
-  return json(200, {
-    response_type: 'ephemeral',
-    text: saveResult.ok ? parsed.reply : `${parsed.reply}\nDatabase warning: ${saveResult.error}`,
-  })
 }
 
 async function saveRecord(record) {
@@ -241,4 +251,11 @@ function json(statusCode, body) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   }
+}
+
+function slackText(text) {
+  return json(200, {
+    response_type: 'ephemeral',
+    text,
+  })
 }
