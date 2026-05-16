@@ -54,7 +54,7 @@ export async function handler(event) {
 
     const saveResult = await saveRecord(record)
 
-    return slackText(saveResult.ok ? parsed.reply : `${parsed.reply}\nDatabase warning: ${saveResult.error}`)
+    return slackText(saveResult.ok ? `${parsed.reply}\nSaved to: ${saveResult.backend}` : `${parsed.reply}\nDatabase warning: ${saveResult.error}`)
   } catch (error) {
     console.error('Unhandled Slack command error.', error)
     return slackText(`FIG command reached Netlify, but the function crashed: ${error.message || 'Unknown error'}`)
@@ -71,7 +71,7 @@ async function saveRecord(record) {
         1400,
         'Apps Script took too long to respond. Check the deployment URL and permissions.',
       )
-      return { ok: true }
+      return { ok: true, backend: 'Google Apps Script' }
     }
 
     if (isGoogleSheetsConfigured()) {
@@ -81,16 +81,16 @@ async function saveRecord(record) {
         1400,
         'Google Sheets took too long to respond.',
       )
-      return { ok: true }
+      return { ok: true, backend: 'Google Sheets API' }
     }
 
     try {
       const store = getBlobStore()
       await store.setJSON(record.id, record)
-      return { ok: true }
+      return { ok: true, backend: 'Netlify Blobs' }
     } catch (error) {
       console.warn('Netlify Blobs unavailable; using warm function memory only.', error.message)
-      return { ok: true }
+      return { ok: true, backend: 'temporary function memory' }
     }
   } catch (error) {
     console.error('Slack record database save failed.', error)
