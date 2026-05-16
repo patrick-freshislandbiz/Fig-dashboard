@@ -117,11 +117,21 @@ function withTimeout(promise, timeoutMs, message) {
 
 async function readRecords() {
   if (isAppsScriptConfigured()) {
-    return readSlackRecordsFromAppsScript()
+    try {
+      return await readSlackRecordsFromAppsScript()
+    } catch (error) {
+      console.warn('Apps Script read unavailable; reading warm function memory only.', error.message)
+      return globalThis.figSlackRecords || []
+    }
   }
 
   if (isGoogleSheetsConfigured()) {
-    return readSlackRecordsFromSheets()
+    try {
+      return await readSlackRecordsFromSheets()
+    } catch (error) {
+      console.warn('Google Sheets read unavailable; reading warm function memory only.', error.message)
+      return globalThis.figSlackRecords || []
+    }
   }
 
   try {
