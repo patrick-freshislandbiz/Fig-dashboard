@@ -24,6 +24,14 @@ Delete any starter code and paste the contents of:
 google-apps-script/Code.gs
 ```
 
+At the top of the script, paste your Google Sheet ID into:
+
+```js
+const SPREADSHEET_ID = '';
+```
+
+The Sheet ID is the long value between `/d/` and `/edit` in your Google Sheet URL.
+
 ## 3. Deploy As A Web App
 
 In Apps Script:

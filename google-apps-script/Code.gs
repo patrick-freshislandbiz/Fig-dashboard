@@ -23,6 +23,10 @@ const TASK_HEADERS = [
   'completed_at',
 ];
 
+// Optional but recommended: paste your Google Sheet ID here.
+// It is the long value between /d/ and /edit in the Sheet URL.
+const SPREADSHEET_ID = '';
+
 function doPost(e) {
   const payload = parseJson_(e.postData && e.postData.contents);
 
@@ -95,7 +99,7 @@ function readMessages_() {
 }
 
 function ensureSheet_(name, headers) {
-  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const spreadsheet = getSpreadsheet_();
   let sheet = spreadsheet.getSheetByName(name);
 
   if (!sheet) {
@@ -111,6 +115,19 @@ function ensureSheet_(name, headers) {
   }
 
   return sheet;
+}
+
+function getSpreadsheet_() {
+  if (SPREADSHEET_ID) {
+    return SpreadsheetApp.openById(SPREADSHEET_ID);
+  }
+
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) {
+    throw new Error('No active spreadsheet found. Paste your Sheet ID into SPREADSHEET_ID at the top of Code.gs.');
+  }
+
+  return spreadsheet;
 }
 
 function parseJson_(text) {
