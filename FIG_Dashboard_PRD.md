@@ -746,7 +746,7 @@ Version 1 is acceptable when:
 6. Finance view can create, edit, delete, and mark invoices as paid.
 7. Work orders can be created, edited, deleted, completed, and marked signed.
 8. Tasks can be created, edited, moved, completed, and deleted.
-9. Staff records can be viewed and added.
+9. Staff records can be created, viewed, edited, and deleted.
 10. Documents view lists the current FIG document library and can add/upload document records.
 11. Settings can save Google and Slack configuration.
 12. Google Sheets integration can read/write configured sheets.

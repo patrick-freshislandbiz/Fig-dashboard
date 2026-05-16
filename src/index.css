@@ -842,6 +842,24 @@ th {
   color: var(--slate);
 }
 
+.staff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.staff-actions button {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--navy);
+  background: #eef4fa;
+}
+
 .avatar {
   width: 54px;
   height: 54px;

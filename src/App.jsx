@@ -1138,8 +1138,9 @@ function TaskModal({ task, setTask, staff, onClose, onSave }) {
 }
 
 function StaffView({ staff, setStaff, workOrders, showToast }) {
-  const addStaff = () => {
-    setStaff([...staff, {
+  const [editingStaff, setEditingStaff] = useState(null)
+  const newStaff = () => {
+    setEditingStaff({
       id: `s${Date.now()}`,
       name: 'New Staff Member',
       initials: 'NS',
@@ -1149,8 +1150,34 @@ function StaffView({ staff, setStaff, workOrders, showToast }) {
       hireDate: format(today, 'yyyy-MM-dd'),
       wage: 60000,
       status: 'active',
-    }])
-    showToast('Staff member added.')
+      notes: '',
+      isNew: true,
+    })
+  }
+  const saveStaff = (member) => {
+    const normalized = {
+      ...member,
+      initials: getInitials(member.name),
+      wage: Number(member.wage) || 0,
+    }
+    delete normalized.isNew
+
+    if (member.isNew) {
+      setStaff([...staff, normalized])
+      showToast('Staff member created.')
+    } else {
+      setStaff(staff.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Staff member updated.')
+    }
+    setEditingStaff(null)
+  }
+  const deleteStaff = (id) => {
+    const member = staff.find((item) => item.id === id)
+    const assignedVisits = workOrders.filter((wo) => [wo.staff1, wo.staff2].includes(member?.name)).length
+    const warning = assignedVisits ? ` ${member.name} is assigned to ${assignedVisits} work order(s).` : ''
+    if (!window.confirm(`Delete ${member?.name || 'this staff member'}?${warning}`)) return
+    setStaff(staff.filter((item) => item.id !== id))
+    showToast('Staff member deleted.')
   }
   return (
     <div className="stack">
@@ -1169,11 +1196,16 @@ function StaffView({ staff, setStaff, workOrders, showToast }) {
             <dl>
               <div><dt>Phone</dt><dd>{member.phone}</dd></div>
               <div><dt>NIS</dt><dd>{member.nis}</dd></div>
+              <div><dt>Hired</dt><dd>{member.hireDate}</dd></div>
               <div><dt>Visits</dt><dd>{workOrders.filter((wo) => [wo.staff1, wo.staff2].includes(member.name)).length}</dd></div>
             </dl>
+            <div className="staff-actions">
+              <button onClick={() => setEditingStaff({ ...member })}><Pencil size={14} /> Edit</button>
+              <button className="danger-action" onClick={() => deleteStaff(member.id)}><Trash2 size={14} /> Delete</button>
+            </div>
           </article>
         ))}
-        <button className="add-card" onClick={addStaff}><Plus size={28} /> Add Staff</button>
+        <button className="add-card" onClick={newStaff}><Plus size={28} /> Add Staff</button>
       </div>
       <Card title="NIS Contribution Summary">
         <DataTable
@@ -1188,6 +1220,65 @@ function StaffView({ staff, setStaff, workOrders, showToast }) {
           ])}
         />
       </Card>
+      {editingStaff && (
+        <StaffModal
+          member={editingStaff}
+          setMember={setEditingStaff}
+          onClose={() => setEditingStaff(null)}
+          onSave={saveStaff}
+        />
+      )}
+    </div>
+  )
+}
+
+function StaffModal({ member, setMember, onClose, onSave }) {
+  const update = (field, value) => setMember({ ...member, [field]: value })
+  const canSave = member.name && member.role && member.phone
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(member)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{member.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{member.name || 'Staff Member'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close staff form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Name" value={member.name} onChange={(value) => update('name', value)} />
+          <Field label="Title / Role" value={member.role} onChange={(value) => update('role', value)} />
+          <Field label="Phone" value={member.phone} onChange={(value) => update('phone', value)} />
+          <Field label="NIS Number" value={member.nis} onChange={(value) => update('nis', value)} />
+          <Field label="Hire Date" type="date" value={member.hireDate} onChange={(value) => update('hireDate', value)} />
+          <Field label="Monthly Wage Estimate" type="number" value={String(member.wage)} onChange={(value) => update('wage', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={member.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="on-leave">On Leave</option>
+            </select>
+          </label>
+          <label className="field span-2">
+            <span>Notes / Information</span>
+            <textarea value={member.notes || ''} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{member.isNew ? 'Create Staff' : 'Save Changes'}</button>
+        </footer>
+      </form>
     </div>
   )
 }
@@ -1438,6 +1529,15 @@ function statusBadge(status) {
 
 function priorityBadge(priority) {
   return <span className={`badge priority-${priority}`}>{priority}</span>
+}
+
+function getInitials(name) {
+  return String(name || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'ST'
 }
 
 function getMetrics(invoices, workOrders, tasks, messages) {
