@@ -7,12 +7,6 @@ import {
   isAppsScriptConfigured,
   readSlackRecordsFromAppsScript,
 } from './lib/apps-script.js'
-import {
-  appendSlackRecordToSheets,
-  isGoogleSheetsConfigured,
-  readSlackRecordsFromSheets,
-} from './lib/google-sheets.js'
-
 const STORE_NAME = 'fig-slack-records'
 globalThis.figSlackRecords = globalThis.figSlackRecords || []
 
@@ -81,6 +75,7 @@ async function saveRecord(record) {
     }
 
     if (isGoogleSheetsConfigured()) {
+      const { appendSlackRecordToSheets } = await import('./lib/google-sheets.js')
       await withTimeout(
         appendSlackRecordToSheets(record),
         1400,
@@ -127,6 +122,7 @@ async function readRecords() {
 
   if (isGoogleSheetsConfigured()) {
     try {
+      const { readSlackRecordsFromSheets } = await import('./lib/google-sheets.js')
       return await readSlackRecordsFromSheets()
     } catch (error) {
       console.warn('Google Sheets read unavailable; reading warm function memory only.', error.message)
@@ -149,6 +145,14 @@ async function readRecords() {
     console.warn('Netlify Blobs unavailable; reading warm function memory only.', error.message)
     return globalThis.figSlackRecords || []
   }
+}
+
+function isGoogleSheetsConfigured() {
+  return Boolean(
+    process.env.GOOGLE_SPREADSHEET_ID &&
+      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
+      process.env.GOOGLE_PRIVATE_KEY,
+  )
 }
 
 function getBlobStore() {
