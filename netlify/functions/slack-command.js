@@ -2,6 +2,11 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getStore } from '@netlify/blobs'
+import {
+  appendSlackRecordToSheets,
+  isGoogleSheetsConfigured,
+  readSlackRecordsFromSheets,
+} from './lib/google-sheets.js'
 
 const STORE_NAME = 'fig-slack-records'
 globalThis.figSlackRecords = globalThis.figSlackRecords || []
@@ -50,6 +55,11 @@ export async function handler(event) {
 async function saveRecord(record) {
   globalThis.figSlackRecords = [record, ...globalThis.figSlackRecords].slice(0, 100)
 
+  if (isGoogleSheetsConfigured()) {
+    await appendSlackRecordToSheets(record)
+    return
+  }
+
   try {
     const store = getBlobStore()
     await store.setJSON(record.id, record)
@@ -59,6 +69,10 @@ async function saveRecord(record) {
 }
 
 async function readRecords() {
+  if (isGoogleSheetsConfigured()) {
+    return readSlackRecordsFromSheets()
+  }
+
   try {
     const store = getBlobStore()
     const listed = await store.list()

@@ -104,11 +104,4 @@ Redeploy the site after adding it.
 
 Then open the dashboard **Messages** view and click **Sync Slack**.
 
-If Sync Slack shows a Netlify Blobs configuration warning, redeploy the latest code. The function now falls back gracefully, but for more reliable long-term storage you can add:
-
-```text
-NETLIFY_SITE_ID=<your Netlify Project ID>
-NETLIFY_BLOBS_TOKEN=<Netlify personal access token>
-```
-
-For the next production-grade version, Google Sheets should become the primary inbound message database.
+For permanent storage, complete `GOOGLE_SHEETS_SETUP.md`. Once the Google environment variables are set in Netlify, `/fig` commands will be stored in Google Sheets instead of temporary function memory.
