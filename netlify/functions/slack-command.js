@@ -54,7 +54,7 @@ export async function handler(event) {
 
     const saveResult = await saveRecord(record)
 
-    return slackText(saveResult.ok ? `${parsed.reply}\nSaved to: ${saveResult.backend}` : `${parsed.reply}\nDatabase warning: ${saveResult.error}`)
+    return slackText(saveResult.ok ? parsed.reply : `${parsed.reply}\nDatabase warning: ${saveResult.error}`)
   } catch (error) {
     console.error('Unhandled Slack command error.', error)
     return slackText(`FIG command reached Netlify, but the function crashed: ${error.message || 'Unknown error'}`)
