@@ -62,12 +62,20 @@ async function saveRecord(record) {
 
   try {
     if (isAppsScriptConfigured()) {
-      await appendSlackRecordToAppsScript(record)
+      await withTimeout(
+        appendSlackRecordToAppsScript(record),
+        1400,
+        'Apps Script took too long to respond. Check the deployment URL and permissions.',
+      )
       return { ok: true }
     }
 
     if (isGoogleSheetsConfigured()) {
-      await appendSlackRecordToSheets(record)
+      await withTimeout(
+        appendSlackRecordToSheets(record),
+        1400,
+        'Google Sheets took too long to respond.',
+      )
       return { ok: true }
     }
 
@@ -86,6 +94,15 @@ async function saveRecord(record) {
       error: error.message || 'Unable to save record. Check GOOGLE_APPS_SCRIPT_URL and Apps Script deployment.',
     }
   }
+}
+
+function withTimeout(promise, timeoutMs, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), timeoutMs)
+    }),
+  ])
 }
 
 async function readRecords() {
