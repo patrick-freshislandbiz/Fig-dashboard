@@ -26,11 +26,14 @@ import {
   FolderOpen,
   LayoutDashboard,
   MessageSquareText,
+  Pencil,
   Plus,
   Search,
   Settings,
   Sparkles,
+  Trash2,
   Users,
+  X,
 } from 'lucide-react'
 import {
   addDays,
@@ -650,14 +653,16 @@ function CalendarView({ month, setMonth, workOrders, tasks, invoices, showToast 
 
 function FinanceView({ invoices, setInvoices, query, showToast }) {
   const [filter, setFilter] = useState('all')
+  const [editingInvoice, setEditingInvoice] = useState(null)
   const filtered = invoices.filter((invoice) => {
-    const matchesStatus = filter === 'all' || invoice.status === filter
+    const displayStatus = isOverdue(invoice) ? 'overdue' : invoice.status
+    const matchesStatus = filter === 'all' || displayStatus === filter
     const matchesQuery = JSON.stringify(invoice).toLowerCase().includes(query.toLowerCase())
     return matchesStatus && matchesQuery
   })
   const totals = getFinanceTotals(invoices)
-  const addInvoice = () => {
-    const next = {
+  const newInvoice = () => {
+    setEditingInvoice({
       id: `i${Date.now()}`,
       invoiceNo: `INV-2026-${String(invoices.length + 32).padStart(3, '0')}`,
       client: 'Hopkinson Mining Logistics',
@@ -668,14 +673,36 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
       status: 'draft',
       paidDate: '',
       woRefs: 'May work orders',
-      notes: 'Generated from dashboard',
-    }
-    setInvoices([next, ...invoices])
-    showToast('Draft May invoice added.')
+      notes: '',
+      isNew: true,
+    })
   }
   const markPaid = (id) => {
     setInvoices(invoices.map((invoice) => invoice.id === id ? { ...invoice, status: 'paid', paidDate: format(today, 'yyyy-MM-dd') } : invoice))
     showToast('Invoice marked paid.')
+  }
+  const saveInvoice = (invoice) => {
+    const normalized = {
+      ...invoice,
+      amount: Number(invoice.amount) || 0,
+      paidDate: invoice.status === 'paid' ? invoice.paidDate || format(today, 'yyyy-MM-dd') : invoice.paidDate,
+    }
+    delete normalized.isNew
+
+    if (invoice.isNew) {
+      setInvoices([normalized, ...invoices])
+      showToast('Invoice created.')
+    } else {
+      setInvoices(invoices.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Invoice updated.')
+    }
+    setEditingInvoice(null)
+  }
+  const deleteInvoice = (id) => {
+    const invoice = invoices.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${invoice?.invoiceNo || 'this invoice'}?`)) return
+    setInvoices(invoices.filter((item) => item.id !== id))
+    showToast('Invoice deleted.')
   }
 
   return (
@@ -716,34 +743,101 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
           </ChartFrame>
         </Card>
       </div>
-      <Card title="Invoices" action={<button className="primary" onClick={addInvoice}><Plus size={16} /> New Invoice</button>}>
+      <Card title="Invoices" action={<button className="primary" onClick={newInvoice}><Plus size={16} /> New Invoice</button>}>
         <FilterTabs items={['all', 'draft', 'sent', 'paid', 'overdue']} active={filter} setActive={setFilter} />
         <DataTable
-          headers={['Invoice', 'Period', 'Due', 'Amount', 'Status', 'Actions']}
+          headers={['Invoice', 'Client', 'Period', 'Due', 'Amount', 'Status', 'Actions']}
           rows={filtered.map((invoice) => [
             invoice.invoiceNo,
+            invoice.client,
             invoice.period,
             invoice.dueDate,
             money.format(invoice.amount),
             statusBadge(isOverdue(invoice) ? 'overdue' : invoice.status),
-            invoice.status !== 'paid' ? <button onClick={() => markPaid(invoice.id)}>Mark paid</button> : invoice.paidDate,
+            <div className="row-actions">
+              <button onClick={() => setEditingInvoice({ ...invoice })}><Pencil size={15} /> Edit</button>
+              {invoice.status !== 'paid' && <button onClick={() => markPaid(invoice.id)}>Mark paid</button>}
+              <button className="danger-action" onClick={() => deleteInvoice(invoice.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
           ])}
         />
       </Card>
+      {editingInvoice && (
+        <InvoiceModal
+          invoice={editingInvoice}
+          setInvoice={setEditingInvoice}
+          onClose={() => setEditingInvoice(null)}
+          onSave={saveInvoice}
+        />
+      )}
+    </div>
+  )
+}
+
+function InvoiceModal({ invoice, setInvoice, onClose, onSave }) {
+  const update = (field, value) => setInvoice({ ...invoice, [field]: value })
+  const canSave = invoice.invoiceNo && invoice.client && invoice.date && invoice.dueDate && Number(invoice.amount) >= 0
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content invoice-modal"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(invoice)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{invoice.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{invoice.invoiceNo || 'Invoice'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close invoice form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Invoice No." value={invoice.invoiceNo} onChange={(value) => update('invoiceNo', value)} />
+          <Field label="Client" value={invoice.client} onChange={(value) => update('client', value)} />
+          <Field label="Service Period" value={invoice.period} onChange={(value) => update('period', value)} />
+          <Field label="Amount (GYD)" type="number" value={String(invoice.amount)} onChange={(value) => update('amount', value)} />
+          <Field label="Invoice Date" type="date" value={invoice.date} onChange={(value) => update('date', value)} />
+          <Field label="Due Date" type="date" value={invoice.dueDate} onChange={(value) => update('dueDate', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={invoice.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+            </select>
+          </label>
+          <Field label="Paid Date" type="date" value={invoice.paidDate} onChange={(value) => update('paidDate', value)} />
+          <Field label="Work Order Refs" value={invoice.woRefs} onChange={(value) => update('woRefs', value)} />
+          <label className="field span-2">
+            <span>Notes</span>
+            <textarea value={invoice.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{invoice.isNew ? 'Create Invoice' : 'Save Changes'}</button>
+        </footer>
+      </form>
     </div>
   )
 }
 
 function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) {
   const [filter, setFilter] = useState('all')
+  const [editingWorkOrder, setEditingWorkOrder] = useState(null)
   const rows = workOrders.filter((wo) => {
     const statusMatch = filter === 'all' || wo.status === filter
     const queryMatch = JSON.stringify(wo).toLowerCase().includes(query.toLowerCase())
     return statusMatch && queryMatch
   })
-  const addWorkOrder = () => {
+  const newWorkOrder = () => {
     const nextDate = '2026-05-18'
-    const next = {
+    setEditingWorkOrder({
       id: `wo${Date.now()}`,
       woNumber: `WO-2026-${String(workOrders.length + 41).padStart(3, '0')}`,
       date: nextDate,
@@ -755,14 +849,31 @@ function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) 
       status: 'scheduled',
       clientRep: '',
       signedDate: '',
-      notes: 'Created in dashboard',
-    }
-    setWorkOrders([next, ...workOrders])
-    showToast('New work order scheduled.')
+      notes: '',
+      isNew: true,
+    })
   }
   const signOff = (id) => {
     setWorkOrders(workOrders.map((wo) => wo.id === id ? { ...wo, status: 'signed', clientRep: 'Client Rep', signedDate: format(today, 'yyyy-MM-dd') } : wo))
     showToast('Work order signed off.')
+  }
+  const saveWorkOrder = (workOrder) => {
+    const normalized = { ...workOrder }
+    delete normalized.isNew
+    if (workOrder.isNew) {
+      setWorkOrders([normalized, ...workOrders])
+      showToast('Work order created.')
+    } else {
+      setWorkOrders(workOrders.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Work order updated.')
+    }
+    setEditingWorkOrder(null)
+  }
+  const deleteWorkOrder = (id) => {
+    const workOrder = workOrders.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${workOrder?.woNumber || 'this work order'}?`)) return
+    setWorkOrders(workOrders.filter((item) => item.id !== id))
+    showToast('Work order deleted.')
   }
 
   return (
@@ -772,7 +883,7 @@ function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) 
         <Stat label="Completed/Signed" value={workOrders.filter((wo) => ['completed', 'signed'].includes(wo.status)).length} tone="green" />
         <Stat label="Pending Signature" value={workOrders.filter((wo) => wo.status !== 'signed').length} tone="orange" />
       </div>
-      <Card title="Work Orders" action={<button className="primary" onClick={addWorkOrder}><Plus size={16} /> New Work Order</button>}>
+      <Card title="Work Orders" action={<button className="primary" onClick={newWorkOrder}><Plus size={16} /> New Work Order</button>}>
         <FilterTabs items={['all', 'scheduled', 'completed', 'pending-signature', 'signed']} active={filter} setActive={setFilter} />
         <DataTable
           headers={['WO #', 'Date', 'Staff', 'Status', 'Client Rep', 'Action']}
@@ -782,7 +893,11 @@ function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) 
             `${wo.staff1} / ${wo.staff2}`,
             statusBadge(wo.status),
             wo.clientRep || 'Pending',
-            wo.status !== 'signed' ? <button onClick={() => signOff(wo.id)}>Sign off</button> : wo.signedDate,
+            <div className="row-actions">
+              <button onClick={() => setEditingWorkOrder({ ...wo })}><Pencil size={15} /> Edit</button>
+              {wo.status !== 'signed' && <button onClick={() => signOff(wo.id)}>Sign off</button>}
+              <button className="danger-action" onClick={() => deleteWorkOrder(wo.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
           ])}
         />
       </Card>
@@ -791,13 +906,89 @@ function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) 
           {cleaningTasks.map((task) => <span key={task}><CheckCircle2 size={16} />{task}</span>)}
         </div>
       </Card>
+      {editingWorkOrder && (
+        <WorkOrderModal
+          workOrder={editingWorkOrder}
+          setWorkOrder={setEditingWorkOrder}
+          staff={staff}
+          onClose={() => setEditingWorkOrder(null)}
+          onSave={saveWorkOrder}
+        />
+      )}
+    </div>
+  )
+}
+
+function WorkOrderModal({ workOrder, setWorkOrder, staff, onClose, onSave }) {
+  const update = (field, value) => setWorkOrder({ ...workOrder, [field]: value })
+  const canSave = workOrder.woNumber && workOrder.date && workOrder.arrival && workOrder.departure
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(workOrder)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{workOrder.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{workOrder.woNumber || 'Work Order'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close work order form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="WO Number" value={workOrder.woNumber} onChange={(value) => update('woNumber', value)} />
+          <Field label="Date" type="date" value={workOrder.date} onChange={(value) => update('date', value)} />
+          <Field label="Day" value={workOrder.day} onChange={(value) => update('day', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={workOrder.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="scheduled">Scheduled</option>
+              <option value="completed">Completed</option>
+              <option value="pending-signature">Pending Signature</option>
+              <option value="signed">Signed</option>
+              <option value="issue-reported">Issue Reported</option>
+            </select>
+          </label>
+          <Field label="Arrival" type="time" value={workOrder.arrival} onChange={(value) => update('arrival', value)} />
+          <Field label="Departure" type="time" value={workOrder.departure} onChange={(value) => update('departure', value)} />
+          <label className="field">
+            <span>Staff 1</span>
+            <select value={workOrder.staff1} onChange={(event) => update('staff1', event.target.value)}>
+              {staff.map((member) => <option key={member.id} value={member.name}>{member.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Staff 2</span>
+            <select value={workOrder.staff2} onChange={(event) => update('staff2', event.target.value)}>
+              {staff.map((member) => <option key={member.id} value={member.name}>{member.name}</option>)}
+            </select>
+          </label>
+          <Field label="Client Rep" value={workOrder.clientRep} onChange={(value) => update('clientRep', value)} />
+          <Field label="Signed Date" type="date" value={workOrder.signedDate} onChange={(value) => update('signedDate', value)} />
+          <label className="field span-2">
+            <span>Notes / Issues</span>
+            <textarea value={workOrder.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{workOrder.isNew ? 'Create Work Order' : 'Save Changes'}</button>
+        </footer>
+      </form>
     </div>
   )
 }
 
 function TasksView({ tasks, setTasks, staff, showToast }) {
-  const addTask = () => {
-    const next = {
+  const [editingTask, setEditingTask] = useState(null)
+  const newTask = () => {
+    setEditingTask({
       id: `t${Date.now()}`,
       title: 'New operations follow-up',
       description: 'Added from dashboard.',
@@ -805,12 +996,29 @@ function TasksView({ tasks, setTasks, staff, showToast }) {
       status: 'todo',
       dueDate: format(addDays(today, 7), 'yyyy-MM-dd'),
       assignedTo: staff[0]?.name ?? 'Patrick King',
-    }
-    setTasks([next, ...tasks])
-    showToast('Task added.')
+      isNew: true,
+    })
   }
   const moveTask = (id, status) => {
     setTasks(tasks.map((task) => task.id === id ? { ...task, status } : task))
+  }
+  const saveTask = (task) => {
+    const normalized = { ...task }
+    delete normalized.isNew
+    if (task.isNew) {
+      setTasks([normalized, ...tasks])
+      showToast('Task created.')
+    } else {
+      setTasks(tasks.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Task updated.')
+    }
+    setEditingTask(null)
+  }
+  const deleteTask = (id) => {
+    const task = tasks.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${task?.title || 'this task'}?`)) return
+    setTasks(tasks.filter((item) => item.id !== id))
+    showToast('Task deleted.')
   }
   return (
     <div className="stack">
@@ -822,7 +1030,7 @@ function TasksView({ tasks, setTasks, staff, showToast }) {
       </div>
       <div className="board-header">
         <h3>Kanban Board</h3>
-        <button className="primary" onClick={addTask}><Plus size={16} /> New Task</button>
+        <button className="primary" onClick={newTask}><Plus size={16} /> New Task</button>
       </div>
       <div className="kanban">
         {[
@@ -845,11 +1053,86 @@ function TasksView({ tasks, setTasks, staff, showToast }) {
                     <option value="done">Done</option>
                   </select>
                 </footer>
+                <div className="task-actions">
+                  <button onClick={() => setEditingTask({ ...task })}><Pencil size={14} /> Edit</button>
+                  <button className="danger-action" onClick={() => deleteTask(task.id)}><Trash2 size={14} /> Delete</button>
+                </div>
               </article>
             ))}
           </section>
         ))}
       </div>
+      {editingTask && (
+        <TaskModal
+          task={editingTask}
+          setTask={setEditingTask}
+          staff={staff}
+          onClose={() => setEditingTask(null)}
+          onSave={saveTask}
+        />
+      )}
+    </div>
+  )
+}
+
+function TaskModal({ task, setTask, staff, onClose, onSave }) {
+  const update = (field, value) => setTask({ ...task, [field]: value })
+  const canSave = task.title && task.dueDate && task.assignedTo
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(task)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{task.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{task.title || 'Task'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close task form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Title" value={task.title} onChange={(value) => update('title', value)} />
+          <Field label="Due Date" type="date" value={task.dueDate} onChange={(value) => update('dueDate', value)} />
+          <label className="field">
+            <span>Priority</span>
+            <select value={task.priority} onChange={(event) => update('priority', event.target.value)}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Status</span>
+            <select value={task.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="todo">To do</option>
+              <option value="in-progress">In progress</option>
+              <option value="done">Done</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Assigned To</span>
+            <select value={task.assignedTo} onChange={(event) => update('assignedTo', event.target.value)}>
+              <option value="Patrick King">Patrick King</option>
+              {staff.map((member) => <option key={member.id} value={member.name}>{member.name}</option>)}
+            </select>
+          </label>
+          <label className="field span-2">
+            <span>Description</span>
+            <textarea value={task.description} onChange={(event) => update('description', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{task.isNew ? 'Create Task' : 'Save Changes'}</button>
+        </footer>
+      </form>
     </div>
   )
 }

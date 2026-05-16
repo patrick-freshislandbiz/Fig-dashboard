@@ -743,8 +743,8 @@ Version 1 is acceptable when:
 3. Demo data reflects Fresh Island Global, Hopkinson Mining Logistics, FIG-CSA-2026-001, the standard service schedule, staff, invoices, work orders, and tasks.
 4. KPI cards calculate from the underlying data.
 5. Calendar shows visits, task due dates, invoice due dates, and registration renewal.
-6. Finance view can create and update invoices.
-7. Work orders can be created, completed, and marked signed.
+6. Finance view can create, edit, delete, and mark invoices as paid.
+7. Work orders can be created, edited, deleted, completed, and marked signed.
 8. Tasks can be created, edited, moved, completed, and deleted.
 9. Staff records can be viewed and added.
 10. Documents view lists the current FIG document library and can add/upload document records.
