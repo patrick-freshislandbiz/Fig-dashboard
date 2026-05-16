@@ -1,6 +1,7 @@
 /* global process */
 
 import { getStore } from '@netlify/blobs'
+import { isAppsScriptConfigured, readSlackRecordsFromAppsScript } from './lib/apps-script.js'
 import { isGoogleSheetsConfigured, readSlackRecordsFromSheets } from './lib/google-sheets.js'
 
 const STORE_NAME = 'fig-slack-records'
@@ -11,6 +12,10 @@ export async function handler(event) {
   }
 
   try {
+    if (isAppsScriptConfigured()) {
+      return json(200, { records: await readSlackRecordsFromAppsScript() })
+    }
+
     if (isGoogleSheetsConfigured()) {
       return json(200, { records: await readSlackRecordsFromSheets() })
     }

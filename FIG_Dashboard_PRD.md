@@ -709,8 +709,8 @@ The app should:
 - Send outbound Slack alerts through a serverless function
 - Prefer `SLACK_WEBHOOK_URL` as a Netlify environment variable for deployed use
 - Receive `/fig` slash commands through `/.netlify/functions/slack-command`
-- Store inbound Slack records and Slack-created tasks in Google Sheets when Google service account credentials are configured
-- Fall back to temporary Netlify storage only when Google Sheets is not configured
+- Store inbound Slack records and Slack-created tasks in Google Sheets through a Google Apps Script web app when `GOOGLE_APPS_SCRIPT_URL` is configured
+- Fall back to service-account Sheets storage or temporary Netlify storage only when Apps Script is not configured
 - Let the dashboard Messages view sync inbound Slack records
 - Support command-style message capture in demo mode
 - Prepare for Slack Events API or connector-based live reads

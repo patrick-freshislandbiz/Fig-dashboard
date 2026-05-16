@@ -104,4 +104,4 @@ Redeploy the site after adding it.
 
 Then open the dashboard **Messages** view and click **Sync Slack**.
 
-For permanent storage, complete `GOOGLE_SHEETS_SETUP.md`. Once the Google environment variables are set in Netlify, `/fig` commands will be stored in Google Sheets instead of temporary function memory.
+For permanent storage, complete `GOOGLE_APPS_SCRIPT_SETUP.md`. Once `GOOGLE_APPS_SCRIPT_URL` is set in Netlify, `/fig` commands will be stored in Google Sheets instead of temporary function memory.

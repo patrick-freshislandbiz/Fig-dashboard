@@ -3,6 +3,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getStore } from '@netlify/blobs'
 import {
+  appendSlackRecordToAppsScript,
+  isAppsScriptConfigured,
+  readSlackRecordsFromAppsScript,
+} from './lib/apps-script.js'
+import {
   appendSlackRecordToSheets,
   isGoogleSheetsConfigured,
   readSlackRecordsFromSheets,
@@ -55,6 +60,11 @@ export async function handler(event) {
 async function saveRecord(record) {
   globalThis.figSlackRecords = [record, ...globalThis.figSlackRecords].slice(0, 100)
 
+  if (isAppsScriptConfigured()) {
+    await appendSlackRecordToAppsScript(record)
+    return
+  }
+
   if (isGoogleSheetsConfigured()) {
     await appendSlackRecordToSheets(record)
     return
@@ -69,6 +79,10 @@ async function saveRecord(record) {
 }
 
 async function readRecords() {
+  if (isAppsScriptConfigured()) {
+    return readSlackRecordsFromAppsScript()
+  }
+
   if (isGoogleSheetsConfigured()) {
     return readSlackRecordsFromSheets()
   }
