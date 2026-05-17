@@ -30,3 +30,32 @@ export async function readSlackRecordsFromAppsScript() {
 
   return result.records || []
 }
+
+export async function readDashboardDataFromAppsScript() {
+  const url = new URL(process.env.GOOGLE_APPS_SCRIPT_URL)
+  url.searchParams.set('action', 'dashboardData')
+  const response = await fetch(url)
+  const result = await response.json().catch(() => ({}))
+
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || 'Unable to read dashboard data.')
+  }
+
+  return result.data || {}
+}
+
+export async function replaceDashboardDataInAppsScript(data) {
+  const response = await fetch(process.env.GOOGLE_APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      action: 'replaceDashboardData',
+      data,
+    }),
+  })
+  const result = await response.json().catch(() => ({}))
+
+  if (!response.ok || result.ok === false) {
+    throw new Error(result.error || 'Unable to save dashboard data.')
+  }
+}

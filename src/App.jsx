@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -458,6 +458,7 @@ const initialMessages = [
 ]
 
 function App() {
+  const hydratedRef = useRef(false)
   const [active, setActive] = useState('overview')
   const [month, setMonth] = useState(today)
   const [clients, setClients] = useState(initialClients)
@@ -473,6 +474,7 @@ function App() {
   const [messages, setMessages] = useState(initialMessages)
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
+  const [syncStatus, setSyncStatus] = useState('Connecting database...')
   const [config, setConfig] = useState({
     googleClientId: '',
     sheetId: '',
@@ -483,6 +485,88 @@ function App() {
   })
 
   const metrics = useMemo(() => getMetrics(invoices, expenses, workOrders, tasks, messages), [invoices, expenses, workOrders, tasks, messages])
+  const dashboardData = useMemo(() => ({
+    clients,
+    invoices,
+    expenses,
+    recurringExpenses,
+    workOrders,
+    tasks,
+    staff,
+    staffHours,
+    inventory,
+    documents,
+    messages,
+  }), [clients, invoices, expenses, recurringExpenses, workOrders, tasks, staff, staffHours, inventory, documents, messages])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadDashboardData() {
+      try {
+        const response = await fetch('/.netlify/functions/dashboard-data')
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(result.error || 'Dashboard database is not ready.')
+        }
+        if (ignore) return
+
+        const data = result.data || {}
+        if (Array.isArray(data.clients)) setClients(data.clients)
+        if (Array.isArray(data.invoices)) setInvoices(data.invoices)
+        if (Array.isArray(data.expenses)) setExpenses(data.expenses)
+        if (Array.isArray(data.recurringExpenses)) setRecurringExpenses(data.recurringExpenses)
+        if (Array.isArray(data.workOrders)) setWorkOrders(data.workOrders)
+        if (Array.isArray(data.tasks)) setTasks(data.tasks)
+        if (Array.isArray(data.staff)) setStaff(data.staff)
+        if (Array.isArray(data.staffHours)) setStaffHours(data.staffHours)
+        if (Array.isArray(data.inventory)) setInventory(data.inventory)
+        if (Array.isArray(data.documents)) setDocuments(data.documents)
+        if (Array.isArray(data.messages)) setMessages(data.messages)
+
+        hydratedRef.current = true
+        setConfig((current) => ({ ...current, googleConnected: true }))
+        setSyncStatus(Object.keys(data).length ? 'Database synced' : 'Database ready')
+      } catch (error) {
+        hydratedRef.current = true
+        setSyncStatus('Local demo data')
+        console.warn('Dashboard database unavailable.', error.message)
+      }
+    }
+
+    loadDashboardData()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hydratedRef.current) return undefined
+
+    setSyncStatus('Saving...')
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/.netlify/functions/dashboard-data', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ data: dashboardData }),
+        })
+        const result = await response.json().catch(() => ({}))
+        if (!response.ok) {
+          throw new Error(result.error || 'Save failed.')
+        }
+        setConfig((current) => ({ ...current, googleConnected: true }))
+        setSyncStatus('Database synced')
+      } catch (error) {
+        setConfig((current) => ({ ...current, googleConnected: false }))
+        setSyncStatus('Save failed')
+        console.warn('Dashboard data save failed.', error.message)
+      }
+    }, 900)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [dashboardData])
 
   const showToast = (message) => {
     setToast(message)
@@ -548,7 +632,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar active={active} setActive={setActive} metrics={metrics} config={config} />
+      <Sidebar active={active} setActive={setActive} metrics={metrics} config={config} syncStatus={syncStatus} />
       <main className="main-panel">
         <TopBar active={active} metrics={metrics} setQuery={setQuery} query={query} config={config} />
         <section className="view-frame">
@@ -570,7 +654,7 @@ function App() {
   )
 }
 
-function Sidebar({ active, setActive, metrics, config }) {
+function Sidebar({ active, setActive, metrics, config, syncStatus }) {
   return (
     <aside className="sidebar">
       <div className="brand-lockup">
@@ -596,7 +680,7 @@ function Sidebar({ active, setActive, metrics, config }) {
       </div>
       <div className="connection-row">
         <span className={`dot ${config.googleConnected ? 'good' : ''}`}></span>
-        {config.googleConnected ? 'Live Data' : 'Demo Mode'}
+        {syncStatus || (config.googleConnected ? 'Live Data' : 'Demo Mode')}
       </div>
     </aside>
   )

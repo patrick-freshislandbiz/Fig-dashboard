@@ -23,6 +23,13 @@ const TASK_HEADERS = [
   'completed_at',
 ];
 
+const APP_DATA_HEADERS = [
+  'collection',
+  'id',
+  'payload',
+  'updated_at',
+];
+
 // Optional but recommended: paste your Google Sheet ID here.
 // It is the long value between /d/ and /edit in the Sheet URL.
 const SPREADSHEET_ID = '';
@@ -35,10 +42,24 @@ function doPost(e) {
     return json_({ ok: true });
   }
 
+  if (payload.action === 'replaceDashboardData') {
+    replaceDashboardData_(payload.data || {});
+    return json_({ ok: true });
+  }
+
   return json_({ ok: false, error: 'Unknown action.' });
 }
 
-function doGet() {
+function doGet(e) {
+  const action = e && e.parameter && e.parameter.action;
+
+  if (action === 'dashboardData') {
+    return json_({
+      ok: true,
+      data: readDashboardData_(),
+    });
+  }
+
   return json_({
     records: readMessages_(),
   });
@@ -96,6 +117,56 @@ function readMessages_() {
     }))
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
     .slice(0, 100);
+}
+
+function replaceDashboardData_(data) {
+  const sheet = ensureSheet_('app_data', APP_DATA_HEADERS);
+  const updatedAt = new Date().toISOString();
+  const rows = [];
+
+  Object.keys(data).forEach((collection) => {
+    const records = Array.isArray(data[collection]) ? data[collection] : [];
+    records.forEach((record) => {
+      if (!record || !record.id) return;
+      rows.push([
+        collection,
+        record.id,
+        JSON.stringify(record),
+        updatedAt,
+      ]);
+    });
+  });
+
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, APP_DATA_HEADERS.length).clearContent();
+  }
+
+  if (rows.length) {
+    sheet.getRange(2, 1, rows.length, APP_DATA_HEADERS.length).setValues(rows);
+  }
+}
+
+function readDashboardData_() {
+  const sheet = ensureSheet_('app_data', APP_DATA_HEADERS);
+  const values = sheet.getDataRange().getValues();
+
+  return values.slice(1).reduce((data, row) => {
+    const collection = row[0];
+    const payload = row[2];
+    if (!collection || !payload) return data;
+
+    if (!data[collection]) {
+      data[collection] = [];
+    }
+
+    try {
+      data[collection].push(JSON.parse(payload));
+    } catch (error) {
+      // Ignore malformed rows so one bad record does not break the dashboard.
+    }
+
+    return data;
+  }, {});
 }
 
 function ensureSheet_(name, headers) {

@@ -1,6 +1,6 @@
 # Google Apps Script Setup
 
-This is the recommended setup for this dashboard. It avoids Google Cloud service account keys and writes Slack records directly into your Google Sheet.
+This is the recommended setup for this dashboard. It avoids Google Cloud service account keys and uses your Google Sheet as the app database.
 
 ## 1. Create Or Open The Sheet
 
@@ -105,9 +105,12 @@ In Slack:
 The Sheet should automatically create/update:
 
 ```text
+app_data
 messages
 tasks
 ```
+
+`app_data` stores the dashboard records for clients, invoices, work orders, tasks, staff, expenses, recurring expenses, inventory, documents, and messages. `messages` and `tasks` are also used by the Slack `/fig` command flow.
 
 Then open the dashboard:
 
@@ -116,3 +119,14 @@ Messages -> Sync Slack
 ```
 
 The Slack record should appear in Messages, and `/fig task ...` should also appear in Tasks.
+
+## Updating The Backend Code
+
+Whenever `google-apps-script/Code.gs` changes:
+
+1. Paste the updated file into Apps Script.
+2. Click **Deploy -> Manage deployments**.
+3. Edit the active web app deployment.
+4. Choose **Version -> New version**.
+5. Click **Deploy**.
+6. If the Web app URL changes, update `GOOGLE_APPS_SCRIPT_URL` in Netlify and redeploy.
