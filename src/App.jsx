@@ -130,7 +130,7 @@ const initialClients = [
     contactEmail: 'operations@hopkinson.example',
     serviceSchedule: 'Monday / Wednesday / Friday',
     billingTerms: 'Net 14',
-    monthlyRate: 186000,
+    monthlyRate: 175900,
     status: 'active',
     notes: 'Primary cleaning services contract FIG-CSA-2026-001.',
   },
@@ -144,7 +144,7 @@ const initialInvoices = [
     period: 'February 2026',
     date: '2026-02-01',
     dueDate: '2026-02-15',
-    amount: 186000,
+    amount: 175900,
     status: 'paid',
     paidDate: '2026-02-12',
     woRefs: 'WO-2026-001 to WO-2026-012',
@@ -965,7 +965,7 @@ function FinanceView({ invoices, setInvoices, expenses, setExpenses, recurringEx
       period: 'May 2026',
       date: '2026-05-31',
       dueDate: '2026-06-14',
-      amount: 186000,
+      amount: 175900,
       status: 'draft',
       paidDate: '',
       woRefs: 'May work orders',
@@ -2372,7 +2372,7 @@ function getWorkOrderMargin(workOrder, invoices, expenses, staffHours) {
 function getMetrics(invoices, expenses, workOrders, tasks, messages) {
   const finance = getFinanceTotals(invoices, expenses)
   return {
-    monthlyBilled: 186000,
+    monthlyBilled: 175900,
     collected: finance.collected,
     outstanding: finance.outstanding,
     monthVisits: workOrders.filter((wo) => wo.date.startsWith('2026-05')).length,
@@ -2435,11 +2435,11 @@ function expenseBreakdown(expenses) {
 function revenueData(invoices) {
   const base = [
     { month: 'Jan', billed: 140000, collected: 140000 },
-    { month: 'Feb', billed: 208800, collected: 186000 },
-    { month: 'Mar', billed: 186000, collected: 120000 },
+    { month: 'Feb', billed: 198700, collected: 175900 },
+    { month: 'Mar', billed: 175900, collected: 120000 },
     { month: 'Apr', billed: 198700, collected: 0 },
-    { month: 'May', billed: 186000, collected: 0 },
-    { month: 'Jun', billed: 186000, collected: 0 },
+    { month: 'May', billed: 175900, collected: 0 },
+    { month: 'Jun', billed: 175900, collected: 0 },
   ]
   const paid = invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0)
   base[1].collected = paid
