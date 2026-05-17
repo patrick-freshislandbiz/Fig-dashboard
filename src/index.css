@@ -591,6 +591,9 @@ button:disabled {
 .badge.sent,
 .badge.scheduled,
 .badge.draft,
+.badge.submitted,
+.badge.supplies,
+.badge.transportation,
 .badge.priority-medium {
   background: rgba(201, 162, 39, 0.18);
   color: #8b6815;
@@ -604,9 +607,20 @@ button:disabled {
 
 .badge.pending-signature,
 .badge.completed,
-.badge.in-progress {
+.badge.in-progress,
+.badge.payroll {
   background: rgba(197, 90, 17, 0.12);
   color: var(--orange);
+}
+
+.badge.equipment,
+.badge.utilities,
+.badge.fees,
+.badge.other,
+.badge.planned,
+.badge.reimbursed {
+  background: rgba(91, 44, 111, 0.1);
+  color: var(--purple);
 }
 
 .calendar-grid {
@@ -713,6 +727,55 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.small-stack {
+  display: grid;
+  gap: 3px;
+}
+
+.small-stack small {
+  color: var(--slate);
+}
+
+.expense-breakdown {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.expense-breakdown article {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fbfdff;
+  display: grid;
+  gap: 8px;
+}
+
+.expense-breakdown span {
+  color: var(--slate);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.expense-breakdown strong {
+  color: #10253b;
+  font-size: 18px;
+}
+
+.expense-breakdown div {
+  height: 8px;
+  border-radius: 999px;
+  background: #e8eef5;
+  overflow: hidden;
+}
+
+.expense-breakdown i {
+  height: 100%;
+  border-radius: inherit;
+  display: block;
 }
 
 .danger-action {
@@ -1133,7 +1196,8 @@ code {
   .kanban,
   .staff-grid,
   .settings-grid,
-  .checklist-grid {
+  .checklist-grid,
+  .expense-breakdown {
     grid-template-columns: 1fr;
   }
 

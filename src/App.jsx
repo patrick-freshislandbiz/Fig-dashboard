@@ -156,6 +156,48 @@ const initialInvoices = [
   },
 ]
 
+const initialExpenses = [
+  {
+    id: 'e1',
+    date: '2026-05-03',
+    vendor: 'Staff Payroll',
+    category: 'payroll',
+    description: 'May first-half cleaning crew payroll',
+    amount: 67500,
+    paymentMethod: 'Bank transfer',
+    status: 'paid',
+    workOrderRef: 'WO-2026-041 / WO-2026-042',
+    receiptRef: 'Payroll register',
+    notes: 'Marcus and Keisha scheduled visits',
+  },
+  {
+    id: 'e2',
+    date: '2026-05-07',
+    vendor: 'Metro Office & Janitorial',
+    category: 'supplies',
+    description: 'Restroom consumables and disinfectant',
+    amount: 28600,
+    paymentMethod: 'Cash',
+    status: 'paid',
+    workOrderRef: 'WO-2026-043',
+    receiptRef: 'Receipt pending upload',
+    notes: 'Triggered by low supplies note',
+  },
+  {
+    id: 'e3',
+    date: '2026-05-10',
+    vendor: 'Taxi / site transportation',
+    category: 'transportation',
+    description: 'Crew transportation to Hopkinson site',
+    amount: 12000,
+    paymentMethod: 'Cash',
+    status: 'submitted',
+    workOrderRef: 'WO-2026-044',
+    receiptRef: '',
+    notes: 'Round trip site transport',
+  },
+]
+
 const cleaningTasks = [
   'Floor sweeping - all areas',
   'Floor mopping / wet cleaning',
@@ -361,6 +403,7 @@ function App() {
   const [active, setActive] = useState('overview')
   const [month, setMonth] = useState(today)
   const [invoices, setInvoices] = useState(initialInvoices)
+  const [expenses, setExpenses] = useState(initialExpenses)
   const [workOrders, setWorkOrders] = useState(initialWorkOrders)
   const [tasks, setTasks] = useState(initialTasks)
   const [staff, setStaff] = useState(initialStaff)
@@ -377,7 +420,7 @@ function App() {
     slackConnected: false,
   })
 
-  const metrics = useMemo(() => getMetrics(invoices, workOrders, tasks, messages), [invoices, workOrders, tasks, messages])
+  const metrics = useMemo(() => getMetrics(invoices, expenses, workOrders, tasks, messages), [invoices, expenses, workOrders, tasks, messages])
 
   const showToast = (message) => {
     setToast(message)
@@ -411,6 +454,8 @@ function App() {
     metrics,
     invoices,
     setInvoices,
+    expenses,
+    setExpenses,
     workOrders,
     setWorkOrders,
     tasks,
@@ -651,16 +696,40 @@ function CalendarView({ month, setMonth, workOrders, tasks, invoices, showToast 
   )
 }
 
-function FinanceView({ invoices, setInvoices, query, showToast }) {
+function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, showToast }) {
   const [filter, setFilter] = useState('all')
+  const [expenseFilter, setExpenseFilter] = useState('all')
   const [editingInvoice, setEditingInvoice] = useState(null)
+  const [editingExpense, setEditingExpense] = useState(null)
   const filtered = invoices.filter((invoice) => {
     const displayStatus = isOverdue(invoice) ? 'overdue' : invoice.status
     const matchesStatus = filter === 'all' || displayStatus === filter
     const matchesQuery = JSON.stringify(invoice).toLowerCase().includes(query.toLowerCase())
     return matchesStatus && matchesQuery
   })
-  const totals = getFinanceTotals(invoices)
+  const filteredExpenses = expenses.filter((expense) => {
+    const matchesCategory = expenseFilter === 'all' || expense.category === expenseFilter
+    const matchesQuery = JSON.stringify(expense).toLowerCase().includes(query.toLowerCase())
+    return matchesCategory && matchesQuery
+  })
+  const totals = getFinanceTotals(invoices, expenses)
+  const expenseTotals = getExpenseTotals(expenses)
+  const newExpense = () => {
+    setEditingExpense({
+      id: `e${Date.now()}`,
+      date: format(today, 'yyyy-MM-dd'),
+      vendor: '',
+      category: 'supplies',
+      description: '',
+      amount: 0,
+      paymentMethod: 'Cash',
+      status: 'submitted',
+      workOrderRef: '',
+      receiptRef: '',
+      notes: '',
+      isNew: true,
+    })
+  }
   const newInvoice = () => {
     setEditingInvoice({
       id: `i${Date.now()}`,
@@ -704,6 +773,28 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
     setInvoices(invoices.filter((item) => item.id !== id))
     showToast('Invoice deleted.')
   }
+  const saveExpense = (expense) => {
+    const normalized = {
+      ...expense,
+      amount: Number(expense.amount) || 0,
+    }
+    delete normalized.isNew
+
+    if (expense.isNew) {
+      setExpenses([normalized, ...expenses])
+      showToast('Expense created.')
+    } else {
+      setExpenses(expenses.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Expense updated.')
+    }
+    setEditingExpense(null)
+  }
+  const deleteExpense = (id) => {
+    const expense = expenses.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${expense?.description || 'this expense'}?`)) return
+    setExpenses(expenses.filter((item) => item.id !== id))
+    showToast('Expense deleted.')
+  }
 
   return (
     <div className="stack">
@@ -711,7 +802,13 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
         <Stat label="Total Billed" value={money.format(totals.billed)} />
         <Stat label="Collected" value={money.format(totals.collected)} tone="green" />
         <Stat label="Outstanding" value={money.format(totals.outstanding)} tone="orange" />
-        <Stat label="Collection Rate" value={`${totals.rate}%`} tone="blue" />
+        <Stat label="Net Position" value={money.format(totals.net)} tone={totals.net >= 0 ? 'blue' : 'red'} />
+      </div>
+      <div className="stat-grid four">
+        <Stat label="Total Expenses" value={money.format(expenseTotals.total)} tone="red" />
+        <Stat label="Payroll" value={money.format(expenseTotals.payroll)} tone="orange" />
+        <Stat label="Supplies" value={money.format(expenseTotals.supplies)} tone="gold" />
+        <Stat label="Transportation" value={money.format(expenseTotals.transportation)} tone="blue" />
       </div>
       <div className="dashboard-grid">
         <Card title="Revenue Trend">
@@ -743,6 +840,17 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
           </ChartFrame>
         </Card>
       </div>
+      <Card title="Expense Breakdown">
+        <div className="expense-breakdown">
+          {expenseBreakdown(expenses).map((item) => (
+            <article key={item.category}>
+              <span>{item.label}</span>
+              <strong>{money.format(item.value)}</strong>
+              <div><i style={{ width: `${item.percent}%`, background: item.color }} /></div>
+            </article>
+          ))}
+        </div>
+      </Card>
       <Card title="Invoices" action={<button className="primary" onClick={newInvoice}><Plus size={16} /> New Invoice</button>}>
         <FilterTabs items={['all', 'draft', 'sent', 'paid', 'overdue']} active={filter} setActive={setFilter} />
         <DataTable
@@ -762,12 +870,39 @@ function FinanceView({ invoices, setInvoices, query, showToast }) {
           ])}
         />
       </Card>
+      <Card title="Expenditures" action={<button className="primary" onClick={newExpense}><Plus size={16} /> New Expense</button>}>
+        <FilterTabs items={['all', 'payroll', 'supplies', 'transportation', 'equipment', 'utilities', 'fees', 'other']} active={expenseFilter} setActive={setExpenseFilter} />
+        <DataTable
+          headers={['Date', 'Category', 'Vendor', 'Description', 'Amount', 'Status', 'WO / Receipt', 'Actions']}
+          rows={filteredExpenses.map((expense) => [
+            expense.date,
+            statusBadge(expense.category),
+            expense.vendor,
+            expense.description,
+            money.format(expense.amount),
+            statusBadge(expense.status),
+            <div className="small-stack"><span>{expense.workOrderRef || 'No WO link'}</span><small>{expense.receiptRef || 'No receipt'}</small></div>,
+            <div className="row-actions">
+              <button onClick={() => setEditingExpense({ ...expense })}><Pencil size={15} /> Edit</button>
+              <button className="danger-action" onClick={() => deleteExpense(expense.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
+          ])}
+        />
+      </Card>
       {editingInvoice && (
         <InvoiceModal
           invoice={editingInvoice}
           setInvoice={setEditingInvoice}
           onClose={() => setEditingInvoice(null)}
           onSave={saveInvoice}
+        />
+      )}
+      {editingExpense && (
+        <ExpenseModal
+          expense={editingExpense}
+          setExpense={setEditingExpense}
+          onClose={() => setEditingExpense(null)}
+          onSave={saveExpense}
         />
       )}
     </div>
@@ -821,6 +956,71 @@ function InvoiceModal({ invoice, setInvoice, onClose, onSave }) {
         <footer className="modal-actions">
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="submit" className="primary" disabled={!canSave}>{invoice.isNew ? 'Create Invoice' : 'Save Changes'}</button>
+        </footer>
+      </form>
+    </div>
+  )
+}
+
+function ExpenseModal({ expense, setExpense, onClose, onSave }) {
+  const update = (field, value) => setExpense({ ...expense, [field]: value })
+  const canSave = expense.date && expense.vendor && expense.category && expense.description && Number(expense.amount) >= 0
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content invoice-modal"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(expense)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{expense.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{expense.description || 'Expense'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close expense form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Date" type="date" value={expense.date} onChange={(value) => update('date', value)} />
+          <Field label="Vendor / Payee" value={expense.vendor} onChange={(value) => update('vendor', value)} />
+          <label className="field">
+            <span>Category</span>
+            <select value={expense.category} onChange={(event) => update('category', event.target.value)}>
+              <option value="payroll">Payroll</option>
+              <option value="supplies">Supplies</option>
+              <option value="transportation">Transportation</option>
+              <option value="equipment">Equipment</option>
+              <option value="utilities">Utilities</option>
+              <option value="fees">Fees</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <Field label="Amount (GYD)" type="number" value={String(expense.amount)} onChange={(value) => update('amount', value)} />
+          <Field label="Description" value={expense.description} onChange={(value) => update('description', value)} />
+          <Field label="Payment Method" value={expense.paymentMethod} onChange={(value) => update('paymentMethod', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={expense.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="planned">Planned</option>
+              <option value="submitted">Submitted</option>
+              <option value="paid">Paid</option>
+              <option value="reimbursed">Reimbursed</option>
+            </select>
+          </label>
+          <Field label="Work Order Ref" value={expense.workOrderRef} onChange={(value) => update('workOrderRef', value)} />
+          <Field label="Receipt / Document Ref" value={expense.receiptRef} onChange={(value) => update('receiptRef', value)} />
+          <label className="field span-2">
+            <span>Notes</span>
+            <textarea value={expense.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{expense.isNew ? 'Create Expense' : 'Save Changes'}</button>
         </footer>
       </form>
     </div>
@@ -1540,8 +1740,8 @@ function getInitials(name) {
     .join('') || 'ST'
 }
 
-function getMetrics(invoices, workOrders, tasks, messages) {
-  const finance = getFinanceTotals(invoices)
+function getMetrics(invoices, expenses, workOrders, tasks, messages) {
+  const finance = getFinanceTotals(invoices, expenses)
   return {
     monthlyBilled: 186000,
     collected: finance.collected,
@@ -1553,11 +1753,54 @@ function getMetrics(invoices, workOrders, tasks, messages) {
   }
 }
 
-function getFinanceTotals(invoices) {
+function getFinanceTotals(invoices, expenses = []) {
   const billed = invoices.reduce((sum, invoice) => sum + invoice.amount, 0)
   const collected = invoices.filter((invoice) => invoice.status === 'paid').reduce((sum, invoice) => sum + invoice.amount, 0)
   const outstanding = billed - collected
-  return { billed, collected, outstanding, rate: billed ? Math.round((collected / billed) * 100) : 0 }
+  const expenseTotal = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  return { billed, collected, outstanding, expenses: expenseTotal, net: collected - expenseTotal, rate: billed ? Math.round((collected / billed) * 100) : 0 }
+}
+
+function getExpenseTotals(expenses) {
+  return expenses.reduce((totals, expense) => {
+    const amount = Number(expense.amount) || 0
+    return {
+      ...totals,
+      total: totals.total + amount,
+      [expense.category]: (totals[expense.category] || 0) + amount,
+    }
+  }, {
+    total: 0,
+    payroll: 0,
+    supplies: 0,
+    transportation: 0,
+    equipment: 0,
+    utilities: 0,
+    fees: 0,
+    other: 0,
+  })
+}
+
+function expenseBreakdown(expenses) {
+  const totals = getExpenseTotals(expenses)
+  const categories = [
+    ['payroll', 'Payroll', brand.orange],
+    ['supplies', 'Supplies', brand.gold],
+    ['transportation', 'Transportation', brand.blue],
+    ['equipment', 'Equipment', brand.purple],
+    ['utilities', 'Utilities', brand.green],
+    ['fees', 'Fees', brand.red],
+    ['other', 'Other', '#64748b'],
+  ]
+  return categories
+    .map(([category, label, color]) => ({
+      category,
+      label,
+      color,
+      value: totals[category] || 0,
+      percent: totals.total ? Math.max(4, Math.round(((totals[category] || 0) / totals.total) * 100)) : 0,
+    }))
+    .filter((item) => item.value > 0)
 }
 
 function revenueData(invoices) {
