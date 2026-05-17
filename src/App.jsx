@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Banknote,
   Bell,
+  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -26,8 +27,10 @@ import {
   FolderOpen,
   LayoutDashboard,
   MessageSquareText,
+  Package,
   Pencil,
   Plus,
+  Repeat,
   Search,
   Settings,
   Sparkles,
@@ -69,10 +72,12 @@ const brand = {
 const navItems = [
   ['overview', 'Overview', LayoutDashboard],
   ['calendar', 'Calendar', CalendarDays],
+  ['clients', 'Clients/Sites', Building2],
   ['finance', 'Finance', Banknote],
   ['workorders', 'Work Orders', ClipboardCheck],
   ['tasks', 'Tasks', CheckCircle2],
   ['staff', 'Staff', Users],
+  ['inventory', 'Inventory', Package],
   ['documents', 'Documents', FolderOpen],
   ['messages', 'Messages', MessageSquareText],
   ['settings', 'Settings', Settings],
@@ -111,6 +116,23 @@ const initialStaff = [
     hireDate: '2026-03-01',
     wage: 60000,
     status: 'active',
+  },
+]
+
+const initialClients = [
+  {
+    id: 'c1',
+    name: 'Hopkinson Mining Logistics',
+    siteName: 'Hopkinson Airport Site',
+    address: 'Hopkinson Airport operations compound',
+    contactName: 'A. Persaud',
+    contactPhone: '592-600-1100',
+    contactEmail: 'operations@hopkinson.example',
+    serviceSchedule: 'Monday / Wednesday / Friday',
+    billingTerms: 'Net 14',
+    monthlyRate: 186000,
+    status: 'active',
+    notes: 'Primary cleaning services contract FIG-CSA-2026-001.',
   },
 ]
 
@@ -196,6 +218,42 @@ const initialExpenses = [
     receiptRef: '',
     notes: 'Round trip site transport',
   },
+]
+
+const initialRecurringExpenses = [
+  {
+    id: 'r1',
+    name: 'Crew payroll allocation',
+    category: 'payroll',
+    amount: 135000,
+    frequency: 'monthly',
+    nextDue: '2026-05-31',
+    vendor: 'Staff Payroll',
+    status: 'active',
+  },
+  {
+    id: 'r2',
+    name: 'Transportation allowance',
+    category: 'transportation',
+    amount: 24000,
+    frequency: 'monthly',
+    nextDue: '2026-05-31',
+    vendor: 'Taxi / site transportation',
+    status: 'active',
+  },
+]
+
+const initialInventory = [
+  { id: 'inv1', item: 'Toilet paper rolls', category: 'Restroom', unit: 'rolls', quantity: 36, reorderLevel: 24, supplier: 'Metro Office & Janitorial', lastPurchased: '2026-05-07', unitCost: 320, notes: 'Used on all site visits.' },
+  { id: 'inv2', item: 'Liquid hand soap', category: 'Restroom', unit: 'litres', quantity: 8, reorderLevel: 6, supplier: 'Metro Office & Janitorial', lastPurchased: '2026-05-07', unitCost: 1450, notes: 'Keep spare stock before month-end.' },
+  { id: 'inv3', item: 'Trash bags', category: 'Waste', unit: 'packs', quantity: 5, reorderLevel: 4, supplier: 'Cleaning Supply Depot', lastPurchased: '2026-04-29', unitCost: 1800, notes: 'Heavy duty preferred.' },
+  { id: 'inv4', item: 'Disinfectant concentrate', category: 'Chemicals', unit: 'bottles', quantity: 3, reorderLevel: 4, supplier: 'Metro Office & Janitorial', lastPurchased: '2026-05-07', unitCost: 2400, notes: 'Below reorder level.' },
+]
+
+const initialStaffHours = [
+  { id: 'h1', date: '2026-05-04', staffName: 'Marcus Thomas', workOrderRef: 'WO-2026-041', hours: 3, rate: 900, status: 'approved', notes: 'Morning service visit.' },
+  { id: 'h2', date: '2026-05-04', staffName: 'Keisha Rodrigues', workOrderRef: 'WO-2026-041', hours: 3, rate: 800, status: 'approved', notes: 'Morning service visit.' },
+  { id: 'h3', date: '2026-05-08', staffName: 'Devon James', workOrderRef: 'WO-2026-043', hours: 3, rate: 800, status: 'submitted', notes: 'Pending sign-off.' },
 ]
 
 const cleaningTasks = [
@@ -402,11 +460,15 @@ const initialMessages = [
 function App() {
   const [active, setActive] = useState('overview')
   const [month, setMonth] = useState(today)
+  const [clients, setClients] = useState(initialClients)
   const [invoices, setInvoices] = useState(initialInvoices)
   const [expenses, setExpenses] = useState(initialExpenses)
+  const [recurringExpenses, setRecurringExpenses] = useState(initialRecurringExpenses)
   const [workOrders, setWorkOrders] = useState(initialWorkOrders)
   const [tasks, setTasks] = useState(initialTasks)
   const [staff, setStaff] = useState(initialStaff)
+  const [staffHours, setStaffHours] = useState(initialStaffHours)
+  const [inventory, setInventory] = useState(initialInventory)
   const [documents, setDocuments] = useState(initialDocuments)
   const [messages, setMessages] = useState(initialMessages)
   const [query, setQuery] = useState('')
@@ -452,16 +514,24 @@ function App() {
 
   const viewProps = {
     metrics,
+    clients,
+    setClients,
     invoices,
     setInvoices,
     expenses,
     setExpenses,
+    recurringExpenses,
+    setRecurringExpenses,
     workOrders,
     setWorkOrders,
     tasks,
     setTasks,
     staff,
     setStaff,
+    staffHours,
+    setStaffHours,
+    inventory,
+    setInventory,
     documents,
     setDocuments,
     messages,
@@ -484,10 +554,12 @@ function App() {
         <section className="view-frame">
           {active === 'overview' && <Overview {...viewProps} setActive={setActive} />}
           {active === 'calendar' && <CalendarView {...viewProps} />}
+          {active === 'clients' && <ClientsView {...viewProps} />}
           {active === 'finance' && <FinanceView {...viewProps} />}
           {active === 'workorders' && <WorkOrdersView {...viewProps} />}
           {active === 'tasks' && <TasksView {...viewProps} />}
           {active === 'staff' && <StaffView {...viewProps} />}
+          {active === 'inventory' && <InventoryView {...viewProps} />}
           {active === 'documents' && <DocumentsView {...viewProps} />}
           {active === 'messages' && <MessagesView {...viewProps} />}
           {active === 'settings' && <SettingsView {...viewProps} />}
@@ -696,11 +768,153 @@ function CalendarView({ month, setMonth, workOrders, tasks, invoices, showToast 
   )
 }
 
-function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, showToast }) {
+function ClientsView({ clients, setClients, workOrders, invoices, query, showToast }) {
+  const [editingClient, setEditingClient] = useState(null)
+  const filtered = clients.filter((client) => JSON.stringify(client).toLowerCase().includes(query.toLowerCase()))
+  const newClient = () => {
+    setEditingClient({
+      id: `c${Date.now()}`,
+      name: 'New Client',
+      siteName: 'New Site',
+      address: '',
+      contactName: '',
+      contactPhone: '',
+      contactEmail: '',
+      serviceSchedule: '',
+      billingTerms: 'Net 14',
+      monthlyRate: 0,
+      status: 'active',
+      notes: '',
+      isNew: true,
+    })
+  }
+  const saveClient = (client) => {
+    const normalized = { ...client, monthlyRate: Number(client.monthlyRate) || 0 }
+    delete normalized.isNew
+    if (client.isNew) {
+      setClients([normalized, ...clients])
+      showToast('Client/site created.')
+    } else {
+      setClients(clients.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Client/site updated.')
+    }
+    setEditingClient(null)
+  }
+  const deleteClient = (id) => {
+    const client = clients.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${client?.name || 'this client/site'}?`)) return
+    setClients(clients.filter((item) => item.id !== id))
+    showToast('Client/site deleted.')
+  }
+
+  return (
+    <div className="stack">
+      <div className="stat-grid three">
+        <Stat label="Clients / Sites" value={clients.length} />
+        <Stat label="Active Sites" value={clients.filter((client) => client.status === 'active').length} tone="green" />
+        <Stat label="Monthly Contract Value" value={money.format(clients.reduce((sum, client) => sum + client.monthlyRate, 0))} tone="blue" />
+      </div>
+      <Card title="Clients & Sites" action={<button className="primary" onClick={newClient}><Plus size={16} /> New Client/Site</button>}>
+        <DataTable
+          headers={['Client', 'Site', 'Contact', 'Schedule', 'Terms', 'Monthly Rate', 'Status', 'Actions']}
+          rows={filtered.map((client) => [
+            client.name,
+            client.siteName,
+            <div className="small-stack"><span>{client.contactName}</span><small>{client.contactPhone}</small></div>,
+            client.serviceSchedule,
+            client.billingTerms,
+            money.format(client.monthlyRate),
+            statusBadge(client.status),
+            <div className="row-actions">
+              <button onClick={() => setEditingClient({ ...client })}><Pencil size={15} /> Edit</button>
+              <button className="danger-action" onClick={() => deleteClient(client.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
+          ])}
+        />
+      </Card>
+      <div className="dashboard-grid">
+        <MiniTable
+          title="Work Orders By Client"
+          rows={clients.map((client) => [client.name, client.siteName, workOrders.filter((wo) => wo.notes.includes(client.siteName) || client.name === 'Hopkinson Mining Logistics').length])}
+        />
+        <MiniTable
+          title="Invoice Value By Client"
+          rows={clients.map((client) => [client.name, client.billingTerms, money.format(invoices.filter((invoice) => invoice.client === client.name).reduce((sum, invoice) => sum + invoice.amount, 0))])}
+        />
+      </div>
+      {editingClient && (
+        <ClientModal
+          client={editingClient}
+          setClient={setEditingClient}
+          onClose={() => setEditingClient(null)}
+          onSave={saveClient}
+        />
+      )}
+    </div>
+  )
+}
+
+function ClientModal({ client, setClient, onClose, onSave }) {
+  const update = (field, value) => setClient({ ...client, [field]: value })
+  const canSave = client.name && client.siteName && client.contactName
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(client)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{client.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{client.name || 'Client / Site'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close client form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Client Name" value={client.name} onChange={(value) => update('name', value)} />
+          <Field label="Site Name" value={client.siteName} onChange={(value) => update('siteName', value)} />
+          <Field label="Address" value={client.address} onChange={(value) => update('address', value)} />
+          <Field label="Contact Name" value={client.contactName} onChange={(value) => update('contactName', value)} />
+          <Field label="Contact Phone" value={client.contactPhone} onChange={(value) => update('contactPhone', value)} />
+          <Field label="Contact Email" value={client.contactEmail} onChange={(value) => update('contactEmail', value)} />
+          <Field label="Service Schedule" value={client.serviceSchedule} onChange={(value) => update('serviceSchedule', value)} />
+          <Field label="Billing Terms" value={client.billingTerms} onChange={(value) => update('billingTerms', value)} />
+          <Field label="Monthly Rate (GYD)" type="number" value={String(client.monthlyRate)} onChange={(value) => update('monthlyRate', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={client.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="active">Active</option>
+              <option value="prospect">Prospect</option>
+              <option value="paused">Paused</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </label>
+          <label className="field span-2">
+            <span>Notes</span>
+            <textarea value={client.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{client.isNew ? 'Create Client/Site' : 'Save Changes'}</button>
+        </footer>
+      </form>
+    </div>
+  )
+}
+
+function FinanceView({ invoices, setInvoices, expenses, setExpenses, recurringExpenses, setRecurringExpenses, query, showToast }) {
   const [filter, setFilter] = useState('all')
   const [expenseFilter, setExpenseFilter] = useState('all')
   const [editingInvoice, setEditingInvoice] = useState(null)
   const [editingExpense, setEditingExpense] = useState(null)
+  const [editingRecurring, setEditingRecurring] = useState(null)
   const filtered = invoices.filter((invoice) => {
     const displayStatus = isOverdue(invoice) ? 'overdue' : invoice.status
     const matchesStatus = filter === 'all' || displayStatus === filter
@@ -727,6 +941,19 @@ function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, show
       workOrderRef: '',
       receiptRef: '',
       notes: '',
+      isNew: true,
+    })
+  }
+  const newRecurringExpense = () => {
+    setEditingRecurring({
+      id: `r${Date.now()}`,
+      name: 'New recurring expense',
+      category: 'other',
+      amount: 0,
+      frequency: 'monthly',
+      nextDue: format(today, 'yyyy-MM-dd'),
+      vendor: '',
+      status: 'active',
       isNew: true,
     })
   }
@@ -794,6 +1021,24 @@ function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, show
     if (!window.confirm(`Delete ${expense?.description || 'this expense'}?`)) return
     setExpenses(expenses.filter((item) => item.id !== id))
     showToast('Expense deleted.')
+  }
+  const saveRecurringExpense = (expense) => {
+    const normalized = { ...expense, amount: Number(expense.amount) || 0 }
+    delete normalized.isNew
+    if (expense.isNew) {
+      setRecurringExpenses([normalized, ...recurringExpenses])
+      showToast('Recurring expense created.')
+    } else {
+      setRecurringExpenses(recurringExpenses.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Recurring expense updated.')
+    }
+    setEditingRecurring(null)
+  }
+  const deleteRecurringExpense = (id) => {
+    const expense = recurringExpenses.find((item) => item.id === id)
+    if (!window.confirm(`Delete ${expense?.name || 'this recurring expense'}?`)) return
+    setRecurringExpenses(recurringExpenses.filter((item) => item.id !== id))
+    showToast('Recurring expense deleted.')
   }
 
   return (
@@ -889,6 +1134,24 @@ function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, show
           ])}
         />
       </Card>
+      <Card title="Recurring Expenses" action={<button className="primary" onClick={newRecurringExpense}><Repeat size={16} /> New Recurring</button>}>
+        <DataTable
+          headers={['Name', 'Category', 'Vendor', 'Frequency', 'Next Due', 'Amount', 'Status', 'Actions']}
+          rows={recurringExpenses.map((expense) => [
+            expense.name,
+            statusBadge(expense.category),
+            expense.vendor,
+            expense.frequency,
+            expense.nextDue,
+            money.format(expense.amount),
+            statusBadge(expense.status),
+            <div className="row-actions">
+              <button onClick={() => setEditingRecurring({ ...expense })}><Pencil size={15} /> Edit</button>
+              <button className="danger-action" onClick={() => deleteRecurringExpense(expense.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
+          ])}
+        />
+      </Card>
       {editingInvoice && (
         <InvoiceModal
           invoice={editingInvoice}
@@ -903,6 +1166,14 @@ function FinanceView({ invoices, setInvoices, expenses, setExpenses, query, show
           setExpense={setEditingExpense}
           onClose={() => setEditingExpense(null)}
           onSave={saveExpense}
+        />
+      )}
+      {editingRecurring && (
+        <RecurringExpenseModal
+          expense={editingRecurring}
+          setExpense={setEditingRecurring}
+          onClose={() => setEditingRecurring(null)}
+          onSave={saveRecurringExpense}
         />
       )}
     </div>
@@ -1027,7 +1298,73 @@ function ExpenseModal({ expense, setExpense, onClose, onSave }) {
   )
 }
 
-function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) {
+function RecurringExpenseModal({ expense, setExpense, onClose, onSave }) {
+  const update = (field, value) => setExpense({ ...expense, [field]: value })
+  const canSave = expense.name && expense.category && expense.nextDue && Number(expense.amount) >= 0
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(expense)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{expense.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{expense.name || 'Recurring Expense'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close recurring expense form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Name" value={expense.name} onChange={(value) => update('name', value)} />
+          <Field label="Vendor / Payee" value={expense.vendor} onChange={(value) => update('vendor', value)} />
+          <label className="field">
+            <span>Category</span>
+            <select value={expense.category} onChange={(event) => update('category', event.target.value)}>
+              <option value="payroll">Payroll</option>
+              <option value="supplies">Supplies</option>
+              <option value="transportation">Transportation</option>
+              <option value="equipment">Equipment</option>
+              <option value="utilities">Utilities</option>
+              <option value="fees">Fees</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <Field label="Amount (GYD)" type="number" value={String(expense.amount)} onChange={(value) => update('amount', value)} />
+          <label className="field">
+            <span>Frequency</span>
+            <select value={expense.frequency} onChange={(event) => update('frequency', event.target.value)}>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Biweekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="annual">Annual</option>
+            </select>
+          </label>
+          <Field label="Next Due" type="date" value={expense.nextDue} onChange={(value) => update('nextDue', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={expense.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+            </select>
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{expense.isNew ? 'Create Recurring Expense' : 'Save Changes'}</button>
+        </footer>
+      </form>
+    </div>
+  )
+}
+
+function WorkOrdersView({ workOrders, setWorkOrders, staff, invoices, expenses, staffHours, query, showToast }) {
   const [filter, setFilter] = useState('all')
   const [editingWorkOrder, setEditingWorkOrder] = useState(null)
   const rows = workOrders.filter((wo) => {
@@ -1105,6 +1442,21 @@ function WorkOrdersView({ workOrders, setWorkOrders, staff, query, showToast }) 
         <div className="checklist-grid">
           {cleaningTasks.map((task) => <span key={task}><CheckCircle2 size={16} />{task}</span>)}
         </div>
+      </Card>
+      <Card title="Profit Per Work Order">
+        <DataTable
+          headers={['Work Order', 'Revenue Linked', 'Labor', 'Expenses', 'Estimated Margin']}
+          rows={workOrders.map((wo) => {
+            const margin = getWorkOrderMargin(wo, invoices, expenses, staffHours)
+            return [
+              wo.woNumber,
+              money.format(margin.revenue),
+              money.format(margin.labor),
+              money.format(margin.expenses),
+              <strong className={margin.margin >= 0 ? 'positive-money' : 'negative-money'}>{money.format(margin.margin)}</strong>,
+            ]
+          })}
+        />
       </Card>
       {editingWorkOrder && (
         <WorkOrderModal
@@ -1337,8 +1689,9 @@ function TaskModal({ task, setTask, staff, onClose, onSave }) {
   )
 }
 
-function StaffView({ staff, setStaff, workOrders, showToast }) {
+function StaffView({ staff, setStaff, staffHours, setStaffHours, workOrders, showToast }) {
   const [editingStaff, setEditingStaff] = useState(null)
+  const [editingHours, setEditingHours] = useState(null)
   const newStaff = () => {
     setEditingStaff({
       id: `s${Date.now()}`,
@@ -1379,12 +1732,43 @@ function StaffView({ staff, setStaff, workOrders, showToast }) {
     setStaff(staff.filter((item) => item.id !== id))
     showToast('Staff member deleted.')
   }
+  const newHours = () => {
+    setEditingHours({
+      id: `h${Date.now()}`,
+      date: format(today, 'yyyy-MM-dd'),
+      staffName: staff[0]?.name ?? '',
+      workOrderRef: workOrders[0]?.woNumber ?? '',
+      hours: 0,
+      rate: 800,
+      status: 'submitted',
+      notes: '',
+      isNew: true,
+    })
+  }
+  const saveHours = (entry) => {
+    const normalized = { ...entry, hours: Number(entry.hours) || 0, rate: Number(entry.rate) || 0 }
+    delete normalized.isNew
+    if (entry.isNew) {
+      setStaffHours([normalized, ...staffHours])
+      showToast('Staff hours created.')
+    } else {
+      setStaffHours(staffHours.map((item) => item.id === normalized.id ? normalized : item))
+      showToast('Staff hours updated.')
+    }
+    setEditingHours(null)
+  }
+  const deleteHours = (id) => {
+    if (!window.confirm('Delete this staff hours entry?')) return
+    setStaffHours(staffHours.filter((item) => item.id !== id))
+    showToast('Staff hours deleted.')
+  }
+  const payrollTotal = staffHours.reduce((sum, entry) => sum + Number(entry.hours) * Number(entry.rate), 0)
   return (
     <div className="stack">
       <div className="stat-grid three">
         <Stat label="Total Staff" value={staff.length} />
         <Stat label="Active" value={staff.filter((member) => member.status === 'active').length} tone="green" />
-        <Stat label="Monthly Labour Allocation" value={money.format(108000)} tone="blue" />
+        <Stat label="Tracked Payroll" value={money.format(payrollTotal)} tone="blue" />
       </div>
       <div className="staff-grid">
         {staff.map((member) => (
@@ -1420,12 +1804,40 @@ function StaffView({ staff, setStaff, workOrders, showToast }) {
           ])}
         />
       </Card>
+      <Card title="Staff Hours & Payroll" action={<button className="primary" onClick={newHours}><Plus size={16} /> New Hours</button>}>
+        <DataTable
+          headers={['Date', 'Staff', 'WO', 'Hours', 'Rate', 'Pay', 'Status', 'Actions']}
+          rows={staffHours.map((entry) => [
+            entry.date,
+            entry.staffName,
+            entry.workOrderRef,
+            entry.hours,
+            money.format(entry.rate),
+            money.format(Number(entry.hours) * Number(entry.rate)),
+            statusBadge(entry.status),
+            <div className="row-actions">
+              <button onClick={() => setEditingHours({ ...entry })}><Pencil size={15} /> Edit</button>
+              <button className="danger-action" onClick={() => deleteHours(entry.id)}><Trash2 size={15} /> Delete</button>
+            </div>,
+          ])}
+        />
+      </Card>
       {editingStaff && (
         <StaffModal
           member={editingStaff}
           setMember={setEditingStaff}
           onClose={() => setEditingStaff(null)}
           onSave={saveStaff}
+        />
+      )}
+      {editingHours && (
+        <StaffHoursModal
+          entry={editingHours}
+          setEntry={setEditingHours}
+          staff={staff}
+          workOrders={workOrders}
+          onClose={() => setEditingHours(null)}
+          onSave={saveHours}
         />
       )}
     </div>
@@ -1477,6 +1889,204 @@ function StaffModal({ member, setMember, onClose, onSave }) {
         <footer className="modal-actions">
           <button type="button" onClick={onClose}>Cancel</button>
           <button type="submit" className="primary" disabled={!canSave}>{member.isNew ? 'Create Staff' : 'Save Changes'}</button>
+        </footer>
+      </form>
+    </div>
+  )
+}
+
+function StaffHoursModal({ entry, setEntry, staff, workOrders, onClose, onSave }) {
+  const update = (field, value) => setEntry({ ...entry, [field]: value })
+  const canSave = entry.date && entry.staffName && entry.workOrderRef && Number(entry.hours) >= 0 && Number(entry.rate) >= 0
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(entry)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{entry.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{entry.staffName || 'Staff Hours'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close staff hours form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Date" type="date" value={entry.date} onChange={(value) => update('date', value)} />
+          <label className="field">
+            <span>Staff</span>
+            <select value={entry.staffName} onChange={(event) => update('staffName', event.target.value)}>
+              {staff.map((member) => <option key={member.id} value={member.name}>{member.name}</option>)}
+            </select>
+          </label>
+          <label className="field">
+            <span>Work Order</span>
+            <select value={entry.workOrderRef} onChange={(event) => update('workOrderRef', event.target.value)}>
+              {workOrders.map((wo) => <option key={wo.id} value={wo.woNumber}>{wo.woNumber}</option>)}
+            </select>
+          </label>
+          <Field label="Hours" type="number" value={String(entry.hours)} onChange={(value) => update('hours', value)} />
+          <Field label="Hourly Rate (GYD)" type="number" value={String(entry.rate)} onChange={(value) => update('rate', value)} />
+          <label className="field">
+            <span>Status</span>
+            <select value={entry.status} onChange={(event) => update('status', event.target.value)}>
+              <option value="submitted">Submitted</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+            </select>
+          </label>
+          <label className="field span-2">
+            <span>Notes</span>
+            <textarea value={entry.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{entry.isNew ? 'Create Hours' : 'Save Changes'}</button>
+        </footer>
+      </form>
+    </div>
+  )
+}
+
+function InventoryView({ inventory, setInventory, query, showToast }) {
+  const [editingItem, setEditingItem] = useState(null)
+  const [filter, setFilter] = useState('all')
+  const filtered = inventory.filter((item) => {
+    const stockStatus = Number(item.quantity) <= Number(item.reorderLevel) ? 'low-stock' : 'in-stock'
+    const matchesFilter = filter === 'all' || filter === stockStatus || item.category.toLowerCase() === filter
+    const matchesQuery = JSON.stringify(item).toLowerCase().includes(query.toLowerCase())
+    return matchesFilter && matchesQuery
+  })
+  const categories = ['all', 'low-stock', 'Restroom', 'Waste', 'Chemicals', 'Equipment'].map((item) => item.toLowerCase())
+  const newItem = () => {
+    setEditingItem({
+      id: `inv${Date.now()}`,
+      item: 'New supply item',
+      category: 'Restroom',
+      unit: 'units',
+      quantity: 0,
+      reorderLevel: 0,
+      supplier: '',
+      lastPurchased: format(today, 'yyyy-MM-dd'),
+      unitCost: 0,
+      notes: '',
+      isNew: true,
+    })
+  }
+  const saveItem = (item) => {
+    const normalized = {
+      ...item,
+      quantity: Number(item.quantity) || 0,
+      reorderLevel: Number(item.reorderLevel) || 0,
+      unitCost: Number(item.unitCost) || 0,
+    }
+    delete normalized.isNew
+    if (item.isNew) {
+      setInventory([normalized, ...inventory])
+      showToast('Inventory item created.')
+    } else {
+      setInventory(inventory.map((existing) => existing.id === normalized.id ? normalized : existing))
+      showToast('Inventory item updated.')
+    }
+    setEditingItem(null)
+  }
+  const deleteItem = (id) => {
+    const item = inventory.find((existing) => existing.id === id)
+    if (!window.confirm(`Delete ${item?.item || 'this inventory item'}?`)) return
+    setInventory(inventory.filter((existing) => existing.id !== id))
+    showToast('Inventory item deleted.')
+  }
+  const lowStock = inventory.filter((item) => Number(item.quantity) <= Number(item.reorderLevel))
+
+  return (
+    <div className="stack">
+      <div className="stat-grid four">
+        <Stat label="Inventory Items" value={inventory.length} />
+        <Stat label="Low Stock" value={lowStock.length} tone={lowStock.length ? 'red' : 'green'} />
+        <Stat label="Inventory Value" value={money.format(inventory.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitCost), 0))} tone="blue" />
+        <Stat label="Suppliers" value={new Set(inventory.map((item) => item.supplier).filter(Boolean)).size} tone="gold" />
+      </div>
+      <Card title="Supplies Inventory" action={<button className="primary" onClick={newItem}><Plus size={16} /> New Item</button>}>
+        <FilterTabs items={categories} active={filter} setActive={setFilter} />
+        <DataTable
+          headers={['Item', 'Category', 'On Hand', 'Reorder Level', 'Supplier', 'Last Purchased', 'Value', 'Status', 'Actions']}
+          rows={filtered.map((item) => {
+            const low = Number(item.quantity) <= Number(item.reorderLevel)
+            return [
+              item.item,
+              item.category,
+              `${item.quantity} ${item.unit}`,
+              `${item.reorderLevel} ${item.unit}`,
+              item.supplier,
+              item.lastPurchased,
+              money.format(Number(item.quantity) * Number(item.unitCost)),
+              statusBadge(low ? 'low-stock' : 'in-stock'),
+              <div className="row-actions">
+                <button onClick={() => setEditingItem({ ...item })}><Pencil size={15} /> Edit</button>
+                <button className="danger-action" onClick={() => deleteItem(item.id)}><Trash2 size={15} /> Delete</button>
+              </div>,
+            ]
+          })}
+        />
+      </Card>
+      {editingItem && (
+        <InventoryModal
+          item={editingItem}
+          setItem={setEditingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={saveItem}
+        />
+      )}
+    </div>
+  )
+}
+
+function InventoryModal({ item, setItem, onClose, onSave }) {
+  const update = (field, value) => setItem({ ...item, [field]: value })
+  const canSave = item.item && item.category && item.unit
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form
+        className="modal-content"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (canSave) onSave(item)
+        }}
+      >
+        <header className="modal-head">
+          <div>
+            <p className="eyebrow">{item.isNew ? 'Create' : 'Edit'}</p>
+            <h3>{item.item || 'Inventory Item'}</h3>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close inventory form">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="form-grid">
+          <Field label="Item" value={item.item} onChange={(value) => update('item', value)} />
+          <Field label="Category" value={item.category} onChange={(value) => update('category', value)} />
+          <Field label="Unit" value={item.unit} onChange={(value) => update('unit', value)} />
+          <Field label="Quantity On Hand" type="number" value={String(item.quantity)} onChange={(value) => update('quantity', value)} />
+          <Field label="Reorder Level" type="number" value={String(item.reorderLevel)} onChange={(value) => update('reorderLevel', value)} />
+          <Field label="Supplier" value={item.supplier} onChange={(value) => update('supplier', value)} />
+          <Field label="Last Purchased" type="date" value={item.lastPurchased} onChange={(value) => update('lastPurchased', value)} />
+          <Field label="Unit Cost (GYD)" type="number" value={String(item.unitCost)} onChange={(value) => update('unitCost', value)} />
+          <label className="field span-2">
+            <span>Notes</span>
+            <textarea value={item.notes} onChange={(event) => update('notes', event.target.value)} />
+          </label>
+        </div>
+        <footer className="modal-actions">
+          <button type="button" onClick={onClose}>Cancel</button>
+          <button type="submit" className="primary" disabled={!canSave}>{item.isNew ? 'Create Item' : 'Save Changes'}</button>
         </footer>
       </form>
     </div>
@@ -1738,6 +2348,25 @@ function getInitials(name) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'ST'
+}
+
+function getWorkOrderMargin(workOrder, invoices, expenses, staffHours) {
+  const revenue = invoices
+    .filter((invoice) => invoice.woRefs.includes(workOrder.woNumber))
+    .reduce((sum, invoice) => sum + invoice.amount, 0)
+  const labor = staffHours
+    .filter((entry) => entry.workOrderRef === workOrder.woNumber)
+    .reduce((sum, entry) => sum + Number(entry.hours) * Number(entry.rate), 0)
+  const linkedExpenses = expenses
+    .filter((expense) => expense.workOrderRef.includes(workOrder.woNumber))
+    .reduce((sum, expense) => sum + expense.amount, 0)
+
+  return {
+    revenue,
+    labor,
+    expenses: linkedExpenses,
+    margin: revenue - labor - linkedExpenses,
+  }
 }
 
 function getMetrics(invoices, expenses, workOrders, tasks, messages) {

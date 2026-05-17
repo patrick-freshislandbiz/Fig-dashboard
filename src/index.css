@@ -374,8 +374,21 @@ button {
   animation: slide-up 0.35s ease both;
 }
 
+.stat {
+  color: white;
+}
+
+.stat strong {
+  display: block;
+  margin-top: 8px;
+  color: white;
+  font-size: 22px;
+  line-height: 1.05;
+}
+
 .kpi p,
 .stat p {
+  color: inherit;
   margin: 0;
   font-size: 13px;
   opacity: 0.86;
@@ -583,6 +596,8 @@ button:disabled {
 .badge.signed,
 .badge.active,
 .badge.done,
+.badge.approved,
+.badge.in-stock,
 .badge.priority-low {
   background: rgba(30, 107, 60, 0.12);
   color: var(--green);
@@ -594,12 +609,14 @@ button:disabled {
 .badge.submitted,
 .badge.supplies,
 .badge.transportation,
+.badge.prospect,
 .badge.priority-medium {
   background: rgba(201, 162, 39, 0.18);
   color: #8b6815;
 }
 
 .badge.overdue,
+.badge.low-stock,
 .badge.priority-high {
   background: rgba(192, 0, 0, 0.1);
   color: var(--red);
@@ -618,9 +635,18 @@ button:disabled {
 .badge.fees,
 .badge.other,
 .badge.planned,
+.badge.paused,
 .badge.reimbursed {
   background: rgba(91, 44, 111, 0.1);
   color: var(--purple);
+}
+
+.positive-money {
+  color: var(--green);
+}
+
+.negative-money {
+  color: var(--red);
 }
 
 .calendar-grid {
